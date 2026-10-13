@@ -9,11 +9,16 @@ import {
   selectCartUnits,
   selectCartTier,
   selectSubtotalCents,
-  selectShippingFeeCents,
   formatCentsBRL,
   cartSnapshot,
 } from "@/lib/cart/cart-store";
 import { lookupCep } from "@/lib/cep/lookup";
+import {
+  chargedShippingCents,
+  formatDeliveryDays,
+  FREE_SHIPPING_MIN_CENTS,
+  type ShippingQuoteOption,
+} from "@/lib/cart/shipping-rules";
 import { applyCoupon, isValidCoupon, normalizeCouponCode, type CouponCode } from "@/lib/cart/coupons";
 import { PaymentBrick, type PixPending } from "@/components/checkout/payment-brick";
 import { PixQrCode } from "@/components/checkout/pix-qr-code";
@@ -73,6 +78,12 @@ function looksLikeEmail(v: string): boolean {
   return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.trim());
 }
 
+interface QuoteResult {
+  key: string;
+  options: ShippingQuoteOption[];
+  message?: string;
+}
+
 interface OrderDraft {
   orderNumber: string;
   accessToken: string;
@@ -85,13 +96,15 @@ export default function CarrinhoPage() {
   const items = useCartStore((s) => s.items);
   const setQty = useCartStore((s) => s.setQty);
   const remove = useCartStore((s) => s.remove);
-  const shippingMethod = useCartStore((s) => s.shippingMethod);
 
   const [hydrated, setHydrated] = useState(false);
   // eslint-disable-next-line react-hooks/set-state-in-effect -- see components/nav/nav.tsx
   useEffect(() => setHydrated(true), []);
 
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [quote, setQuote] = useState<QuoteResult | null>(null);
+  const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
+  const [quoteNonce, setQuoteNonce] = useState(0);
   const [cepLoading, setCepLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -110,13 +123,61 @@ export default function CarrinhoPage() {
   const cartUnits = selectCartUnits(items);
   const cartTier = selectCartTier(items);
   const rawSubtotalCents = selectSubtotalCents(items);
-  const rawShippingFeeCents = selectShippingFeeCents(shippingMethod);
+
+  // Frete: cotado no Melhor Envio (função shop-calculate-shipping) pelo CEP e pelos itens. O
+  // resultado guarda a chave da consulta; "carregando" é a chave atual ainda não ter resposta.
+  const cepDigits = form.cep.replace(/\D/g, "");
+  const quoteKey =
+    hydrated && cepDigits.length === 8 && lines.length > 0
+      ? `${cepDigits}|${lines.map((l) => `${l.slug}:${l.qty}`).join(",")}|${quoteNonce}`
+      : null;
+  const shippingLoading = quoteKey !== null && quote?.key !== quoteKey;
+  const currentQuote = quoteKey !== null && quote?.key === quoteKey ? quote : null;
+  const shippingOptions = currentQuote?.options ?? [];
+  const selectedShipping =
+    shippingOptions.find((o) => o.serviceId === selectedServiceId) ?? shippingOptions[0] ?? null;
+  const rawShippingFeeCents = selectedShipping?.priceCents ?? 0;
   // O desconto exibido aqui é só preview — o backend recalcula e valida o
   // código de novo em shop-create-order, nunca confia no total do cliente.
-  const { subtotalCents, shippingFeeCents } = appliedCoupon
+  const { subtotalCents, shippingFeeCents: couponShippingFeeCents } = appliedCoupon
     ? applyCoupon(appliedCoupon, rawSubtotalCents, rawShippingFeeCents)
     : { subtotalCents: rawSubtotalCents, shippingFeeCents: rawShippingFeeCents };
+  const shippingFeeCents = chargedShippingCents(couponShippingFeeCents, subtotalCents);
   const totalCents = subtotalCents + shippingFeeCents;
+  const freeShippingMissingCents = FREE_SHIPPING_MIN_CENTS - subtotalCents;
+
+  useEffect(() => {
+    if (quoteKey === null) return;
+    let cancelled = false;
+    // Espera um instante pra não consultar a cada clique no +/− do carrinho.
+    const timer = setTimeout(async () => {
+      let result: QuoteResult;
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/shop-calculate-shipping`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "" },
+          body: JSON.stringify({ cep: cepDigits, items: lines.map((l) => ({ slug: l.slug, qty: l.qty })) }),
+        });
+        const data = await res.json().catch(() => null);
+        if (res.ok && Array.isArray(data?.options)) {
+          result = { key: quoteKey, options: data.options };
+        } else if (data?.code === "no_options") {
+          result = { key: quoteKey, options: [], message: "Não encontramos opções de entrega para este CEP." };
+        } else {
+          result = { key: quoteKey, options: [], message: data?.message ?? "Não foi possível calcular o frete agora. Tente novamente." };
+        }
+      } catch {
+        result = { key: quoteKey, options: [], message: "Falha de conexão ao calcular o frete. Tente novamente." };
+      }
+      if (!cancelled) setQuote(result);
+    }, 350);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+    // lines/cepDigits entram na chave; refazer só quando a chave muda.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quoteKey]);
 
   useEffect(() => {
     if (!hydrated || cartViewTracked.current || lines.length === 0) return;
@@ -221,6 +282,10 @@ export default function CarrinhoPage() {
       setError("Preencha todos os campos obrigatórios de entrega.");
       return;
     }
+    if (!selectedShipping) {
+      setError("Escolha uma opção de entrega para finalizar a compra.");
+      return;
+    }
     if (!acceptedPrivacy) {
       setError("Você precisa aceitar a Política de Privacidade para finalizar a compra.");
       return;
@@ -262,7 +327,7 @@ export default function CarrinhoPage() {
             bairro: form.bairro,
             cidade: form.cidade,
             uf: form.uf,
-            method: shippingMethod,
+            serviceId: selectedShipping.serviceId,
           },
           items: lines.map((l) => ({ slug: l.slug, qty: l.qty })),
           couponCode: appliedCoupon ?? undefined,
@@ -275,6 +340,11 @@ export default function CarrinhoPage() {
         try {
           const data = await res.json();
           if (data?.message) message = data.message;
+          // A opção escolhida deixou de existir (ou o frete mudou): recota e deixa escolher de novo.
+          if (data?.code === "shipping_service_unavailable") {
+            setSelectedServiceId(null);
+            setQuoteNonce((n) => n + 1);
+          }
         } catch {
           // resposta de erro não veio em JSON (ex: página de erro do servidor) —
           // mantém a mensagem com o status HTTP em vez de mascarar como falha de rede.
@@ -348,18 +418,65 @@ export default function CarrinhoPage() {
                 <StepBadge n={2} />
                 <h2 className="font-display text-xl text-verde-escuro">Método de envio</h2>
               </div>
-              <div className="flex items-center gap-3.5 rounded-input border-2 border-verde-folha bg-input-bg px-[18px] py-[15px]">
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-verde-folha">
-                  <span className="h-2.5 w-2.5 rounded-full bg-verde-folha" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[15px] font-extrabold text-verde-escuro">Entrega padrão</span>
-                  <span className="block text-xs text-eyebrow-claro">3–7 dias úteis</span>
-                </span>
-                <span className="text-[15px] font-extrabold text-verde-folha">
-                  {formatCentsBRL(shippingFeeCents)}
-                </span>
-              </div>
+              {quoteKey === null ? (
+                <p className="rounded-input border border-dashed border-borda-clara-2 bg-input-bg px-4 py-4 text-sm text-tinta/60">
+                  Informe o CEP para calcular o frete.
+                </p>
+              ) : shippingLoading ? (
+                <p role="status" className="rounded-input border border-borda-clara-2 bg-input-bg px-4 py-4 text-sm text-tinta/60">
+                  Calculando o frete…
+                </p>
+              ) : shippingOptions.length === 0 ? (
+                <div className="rounded-input border border-borda-clara-2 bg-input-bg px-4 py-4 text-sm text-tinta/70">
+                  <p role="alert">{currentQuote?.message ?? "Não foi possível calcular o frete."}</p>
+                  <button
+                    type="button"
+                    onClick={() => setQuoteNonce((n) => n + 1)}
+                    className="mt-2 font-semibold text-verde-folha hover:underline"
+                  >
+                    Tentar de novo
+                  </button>
+                </div>
+              ) : (
+                <div role="radiogroup" aria-label="Opções de entrega" className="flex flex-col gap-2.5">
+                  {shippingOptions.map((opt) => {
+                    const active = opt.serviceId === selectedShipping?.serviceId;
+                    const optFee = chargedShippingCents(
+                      appliedCoupon ? applyCoupon(appliedCoupon, rawSubtotalCents, opt.priceCents).shippingFeeCents : opt.priceCents,
+                      subtotalCents,
+                    );
+                    return (
+                      <button
+                        key={opt.serviceId}
+                        type="button"
+                        role="radio"
+                        aria-checked={active}
+                        disabled={!!orderDraft}
+                        onClick={() => setSelectedServiceId(opt.serviceId)}
+                        className={`flex items-center gap-3.5 rounded-input border-2 bg-input-bg px-[18px] py-[15px] text-left ${active ? "border-verde-folha" : "border-borda-clara-2"}`}
+                      >
+                        <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${active ? "border-verde-folha" : "border-borda-clara-2"}`}>
+                          {active && <span className="h-2.5 w-2.5 rounded-full bg-verde-folha" />}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-[15px] font-extrabold text-verde-escuro">
+                            {opt.company ? `${opt.company} ${opt.name}` : opt.name}
+                          </span>
+                          <span className="block text-xs text-eyebrow-claro">Chega em até {formatDeliveryDays(opt.deliveryDays)}</span>
+                        </span>
+                        <span className="text-[15px] font-extrabold text-verde-folha">
+                          {optFee === 0 ? "Grátis" : formatCentsBRL(optFee)}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              <p className="mt-3 text-xs text-eyebrow-claro">
+                {freeShippingMissingCents > 0
+                  ? `Frete grátis em compras a partir de ${formatCentsBRL(FREE_SHIPPING_MIN_CENTS)} (faltam ${formatCentsBRL(freeShippingMissingCents)}).`
+                  : "Você ganhou frete grátis nesta compra."}
+              </p>
             </section>
 
             <section className="rounded-card-conteudo border border-borda-clara bg-white p-7">
@@ -495,7 +612,15 @@ export default function CarrinhoPage() {
                 </div>
                 <div className="flex justify-between">
                   <span>Frete</span>
-                  <span>{formatCentsBRL(shippingFeeCents)}</span>
+                  <span>
+                    {selectedShipping
+                      ? shippingFeeCents === 0
+                        ? "Grátis"
+                        : formatCentsBRL(shippingFeeCents)
+                      : shippingLoading
+                        ? "Calculando…"
+                        : "Informe o CEP"}
+                  </span>
                 </div>
                 <div className="flex justify-between font-display text-xl text-creme">
                   <span>Total</span>
@@ -552,7 +677,7 @@ export default function CarrinhoPage() {
               {!orderDraft && (
                 <button
                   onClick={handleFinalizarCompra}
-                  disabled={submitting || lines.length === 0}
+                  disabled={submitting || lines.length === 0 || shippingLoading || !selectedShipping}
                   className="mt-2 rounded-pill bg-dourado px-6 py-3.5 text-sm font-bold text-verde-escuro disabled:opacity-60"
                 >
                   {submitting ? "Processando…" : `Finalizar compra · ${formatCentsBRL(totalCents)}`}

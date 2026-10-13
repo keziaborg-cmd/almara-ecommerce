@@ -1,6 +1,7 @@
 import { makeResponders } from "../_shared/cors.ts";
 import { createAdminClient } from "../_shared/supabase-admin.ts";
-import { isShippingMethod, shippingFeeCents } from "../_shared/shipping.ts";
+import { chargedShippingCents, findShippingOption, MAX_UNITS_PER_QUOTE, normalizeCep } from "../_shared/shipping.ts";
+import { calculateShipping, SHIPPING_ENVIRONMENT } from "../_shared/melhorEnvio.ts";
 import { generateOrderNumber } from "../_shared/order-number.ts";
 import { createPreference } from "../_shared/mercadopago.ts";
 import { tierForCartUnits, unitPriceForTier } from "../_shared/pricing.ts";
@@ -17,7 +18,9 @@ interface RequestBody {
     bairro: string;
     cidade: string;
     uf: string;
-    method: string;
+    // id do serviço escolhido no checkout (vem de shop-calculate-shipping). Só o id: o preço e o
+    // prazo são recotados aqui, nunca lidos do cliente.
+    serviceId: string;
   };
   items: { slug: string; qty: number }[];
   couponCode?: string;
@@ -44,13 +47,17 @@ Deno.serve(async (req) => {
     }
     if (
       !shipping?.cep || !shipping?.rua || !shipping?.numero ||
-      !shipping?.bairro || !shipping?.cidade || !shipping?.uf ||
-      !isShippingMethod(shipping.method)
+      !shipping?.bairro || !shipping?.cidade || !shipping?.uf
     ) {
       return json({ message: "Endereço de entrega incompleto." }, 400);
     }
     if (!Array.isArray(items) || items.length === 0) {
       return json({ message: "Carrinho vazio." }, 400);
+    }
+    const destinationCep = normalizeCep(shipping.cep);
+    if (!destinationCep) return json({ message: "CEP inválido." }, 400);
+    if (typeof shipping.serviceId !== "string" || !shipping.serviceId) {
+      return json({ code: "missing_shipping_service", message: "Escolha uma opção de entrega." }, 400);
     }
 
     const rawCoupon = couponCode?.trim() ?? "";
@@ -65,7 +72,7 @@ Deno.serve(async (req) => {
     const slugs = items.map((i) => i.slug);
     const { data: products, error: productsError } = await supabase
       .from("shop_products")
-      .select("id, slug, name, price_cents, price_tier2_cents, price_tier3_cents")
+      .select("id, slug, name, weight_grams, price_cents, price_tier2_cents, price_tier3_cents")
       .in("slug", slugs)
       .eq("active", true);
 
@@ -73,7 +80,7 @@ Deno.serve(async (req) => {
 
     const productBySlug = new Map(products.map((p) => [p.slug, p]));
     for (const item of items) {
-      if (!productBySlug.has(item.slug) || item.qty < 1) {
+      if (!productBySlug.has(item.slug) || !Number.isInteger(item.qty) || item.qty < 1) {
         return json({ message: `Item inválido: ${item.slug}.` }, 400);
       }
     }
@@ -81,6 +88,9 @@ Deno.serve(async (req) => {
     // Volume-discount tier is decided by total units across the whole cart
     // (any mix of flavors) — never trust a tier/price sent by the client.
     const totalUnits = items.reduce((sum, item) => sum + item.qty, 0);
+    if (totalUnits > MAX_UNITS_PER_QUOTE) {
+      return json({ message: "Quantidade acima do limite por pedido. Fale com a gente pelo WhatsApp." }, 400);
+    }
     const tier = tierForCartUnits(totalUnits);
 
     const orderItems = items.map((item) => {
@@ -98,10 +108,33 @@ Deno.serve(async (req) => {
     });
 
     const rawSubtotalCents = orderItems.reduce((sum, i) => sum + i.subtotal_cents, 0);
-    const rawShippingFee = shippingFeeCents(shipping.method);
-    const { subtotalCents, shippingFeeCents: shippingFee } = coupon
+
+    // Frete: recotado no Melhor Envio com o CEP e os itens que o servidor conhece, e o serviço
+    // escolhido tem que estar entre as opções de agora. Nada de preço vindo do cliente.
+    const catalog: Record<string, { weightGrams: number }> = {};
+    for (const p of products) catalog[p.slug] = { weightGrams: p.weight_grams };
+    let shippingOptions;
+    try {
+      console.log("shop-create-order: cotando frete", { ambiente: SHIPPING_ENVIRONMENT });
+      shippingOptions = await calculateShipping(destinationCep, items, catalog);
+    } catch (e) {
+      console.error("shop-create-order: falha no Melhor Envio", (e as Error).message);
+      return json({ code: "shipping_unavailable", message: "Não foi possível calcular o frete agora. Tente novamente em instantes." }, 502);
+    }
+    const chosenShipping = findShippingOption(shippingOptions, shipping.serviceId);
+    if (!chosenShipping) {
+      return json({
+        code: "shipping_service_unavailable",
+        message: "Essa opção de entrega não está mais disponível. Escolha outra no carrinho.",
+      }, 409);
+    }
+
+    const rawShippingFee = chosenShipping.priceCents;
+    const { subtotalCents, shippingFeeCents: couponShippingFee } = coupon
       ? applyCoupon(coupon, rawSubtotalCents, rawShippingFee)
       : { subtotalCents: rawSubtotalCents, shippingFeeCents: rawShippingFee };
+    // Frete grátis acima do valor mínimo (sobre os produtos já com cupom).
+    const shippingFee = chargedShippingCents(couponShippingFee, subtotalCents);
     const totalCents = subtotalCents + shippingFee;
 
     const { data: existingCustomer } = await supabase
@@ -145,7 +178,10 @@ Deno.serve(async (req) => {
           bairro: shipping.bairro,
           cidade: shipping.cidade,
           uf: shipping.uf,
-          shipping_method: shipping.method,
+          shipping_method: chosenShipping.serviceId,
+          shipping_service_name: `${chosenShipping.company} ${chosenShipping.name}`.trim(),
+          shipping_quote_cents: chosenShipping.priceCents,
+          shipping_delivery_days: chosenShipping.deliveryDays,
           shipping_fee_cents: shippingFee,
           subtotal_cents: subtotalCents,
           total_cents: totalCents,

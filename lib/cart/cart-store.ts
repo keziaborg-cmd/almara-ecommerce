@@ -5,12 +5,6 @@ import { tierForCartUnits, unitPriceForTier, type PriceTier } from "@/lib/pricin
 import { track } from "@/lib/crm/tracker";
 import { STORAGE_KEYS } from "@/lib/storage-keys";
 
-export type ShippingMethod = "padrao";
-
-const SHIPPING_FEE_CENTS: Record<ShippingMethod, number> = {
-  padrao: 1290,
-};
-
 export interface CartLine {
   slug: TeaSlug;
   name: string;
@@ -21,7 +15,6 @@ export interface CartLine {
 
 interface CartState {
   items: Partial<Record<TeaSlug, number>>;
-  shippingMethod: ShippingMethod;
   add: (slug: TeaSlug, qty?: number) => void;
   setQty: (slug: TeaSlug, qty: number) => void;
   remove: (slug: TeaSlug) => void;
@@ -32,7 +25,6 @@ export const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
       items: {},
-      shippingMethod: "padrao",
       add: (slug, qty = 1) => {
         const wasEmpty = selectCartUnits(get().items) === 0;
         set((state) => ({
@@ -105,10 +97,6 @@ export function selectCartLines(items: Partial<Record<TeaSlug, number>>): CartLi
 
 export function selectSubtotalCents(items: Partial<Record<TeaSlug, number>>): number {
   return selectCartLines(items).reduce((sum, line) => sum + line.subtotalCents, 0);
-}
-
-export function selectShippingFeeCents(method: ShippingMethod): number {
-  return SHIPPING_FEE_CENTS[method];
 }
 
 export function formatCentsBRL(cents: number): string {
