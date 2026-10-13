@@ -1065,6 +1065,9 @@ export type Database = {
           rua: string
           shipping_fee_cents: number
           shipping_method: string
+          shipping_service_name: string | null
+          shipping_quote_cents: number | null
+          shipping_delivery_days: number | null
           status: string
           subtotal_cents: number
           telefone: string
@@ -1094,6 +1097,9 @@ export type Database = {
           rua: string
           shipping_fee_cents?: number
           shipping_method: string
+          shipping_service_name: string | null
+          shipping_quote_cents: number | null
+          shipping_delivery_days: number | null
           status?: string
           subtotal_cents: number
           telefone: string
@@ -1123,6 +1129,9 @@ export type Database = {
           rua?: string
           shipping_fee_cents?: number
           shipping_method?: string
+          shipping_service_name?: string | null
+          shipping_quote_cents?: number | null
+          shipping_delivery_days?: number | null
           status?: string
           subtotal_cents?: number
           telefone?: string
