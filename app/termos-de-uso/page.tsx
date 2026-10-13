@@ -98,7 +98,7 @@ const SECTIONS: LegalSection[] = [
     title: "Preços e disponibilidade",
     blocks: [
       { t: "p", text: "Os preços são informados em reais (R$) e poderão ser alterados sem aviso prévio, respeitando-se sempre o valor apresentado e confirmado no momento da conclusão da compra." },
-      { t: "p", text: "Eventuais custos adicionais, incluindo frete, serão apresentados ao consumidor antes da finalização do pedido." },
+      { t: "p", text: "O frete é calculado a partir do CEP de entrega, com base no peso e nas dimensões do pedido, e apresentado ao consumidor, com valor e prazo, antes da finalização. Pedidos com produtos a partir de R$ 100,00 têm frete grátis. Eventuais outros custos também serão informados antes da finalização do pedido." },
       { t: "p", text: "Os produtos estão sujeitos à disponibilidade de estoque." },
       { t: "p", text: "Caso, excepcionalmente, um produto adquirido fique indisponível após a confirmação do pedido, a Almara entrará em contato para apresentar as alternativas cabíveis, incluindo a substituição mediante concordância do consumidor ou o reembolso integral do valor pago." },
     ],
