@@ -1,11 +1,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { CookiePreferencesLink } from "@/components/consent/cookie-preferences-link";
+import { INSTAGRAM_HANDLE, INSTAGRAM_URL } from "@/lib/site";
 
 export function Footer() {
   const email = process.env.NEXT_PUBLIC_CONTACT_EMAIL || "ola@almara.com.br";
-  // Sem o @ definido (NEXT_PUBLIC_INSTAGRAM_HANDLE), o Instagram não aparece.
-  const instagram = process.env.NEXT_PUBLIC_INSTAGRAM_HANDLE?.trim().replace(/^@/, "") || null;
 
   return (
     <footer className="mt-[70px] bg-verde-escuro px-[6vw] pb-10 pt-14 text-[#cfe0c9]">
@@ -63,7 +62,9 @@ export function Footer() {
               <a href={`mailto:${email}`} className="text-sm text-[#a9c1a2] hover:text-creme">
                 {email}
               </a>
-              {instagram && <span className="text-sm text-[#a9c1a2]">@{instagram}</span>}
+              <a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer" className="text-sm text-[#a9c1a2] hover:text-creme">
+                @{INSTAGRAM_HANDLE}
+              </a>
             </div>
           </div>
         </div>

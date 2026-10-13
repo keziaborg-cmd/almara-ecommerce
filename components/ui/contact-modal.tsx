@@ -4,13 +4,12 @@ import { useUIStore } from "@/lib/ui/ui-store";
 import { useEffect } from "react";
 import { buildWhatsAppLink } from "@/lib/whatsapp/link";
 import { track } from "@/lib/crm/tracker";
+import { INSTAGRAM_HANDLE, INSTAGRAM_URL } from "@/lib/site";
 
 export function ContactModal() {
   const open = useUIStore((s) => s.contactOpen);
   const setOpen = useUIStore((s) => s.setContactOpen);
   const email = process.env.NEXT_PUBLIC_CONTACT_EMAIL || "ola@almara.com.br";
-  // Sem o @ definido (NEXT_PUBLIC_INSTAGRAM_HANDLE), o Instagram não aparece.
-  const instagram = process.env.NEXT_PUBLIC_INSTAGRAM_HANDLE?.trim().replace(/^@/, "") || null;
 
   useEffect(() => {
     if (open) track("contact_viewed", { via: "modal" });
@@ -64,22 +63,20 @@ export function ContactModal() {
               <span className="block text-sm text-tinta/70">Atendimento em horário comercial</span>
             </span>
           </a>
-          {instagram && (
-            <a
-              href={`https://instagram.com/${instagram}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-3.5 rounded-input border border-borda-clara-2 bg-white px-[18px] py-[15px] hover:border-dourado"
-            >
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] bg-[#f3e0dd] text-[19px] text-vinho">
-                ◎
-              </span>
-              <span className="min-w-0">
-                <span className="block text-[15px] font-extrabold text-verde-escuro">Instagram</span>
-                <span className="block text-sm text-tinta/70">@{instagram}</span>
-              </span>
-            </a>
-          )}
+          <a
+            href={INSTAGRAM_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3.5 rounded-input border border-borda-clara-2 bg-white px-[18px] py-[15px] hover:border-dourado"
+          >
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] bg-[#f3e0dd] text-[19px] text-vinho">
+              ◎
+            </span>
+            <span className="min-w-0">
+              <span className="block text-[15px] font-extrabold text-verde-escuro">Instagram</span>
+              <span className="block text-sm text-tinta/70">@{INSTAGRAM_HANDLE}</span>
+            </span>
+          </a>
         </div>
       </div>
     </div>
