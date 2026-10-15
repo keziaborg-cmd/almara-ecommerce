@@ -11,10 +11,10 @@ const SECTIONS: LegalSection[] = [
     title: "Sobre a Almara",
     blocks: [
       { t: "p", text: "A Almara é uma marca dedicada à comercialização de chás e produtos relacionados ao ritual e à experiência de consumo de chá." },
-      { t: "kv", k: "Responsável", v: "Kezia Borges de Oliveira" },
+      { t: "kv", k: "Razão social", v: "ALMARA PRODUTOS NATURAIS LTDA" },
       { t: "kv", k: "Nome fantasia", v: "Almara" },
-      { t: "kv", k: "CPF", v: "504.355.458-41" },
-      { t: "kv", k: "Endereço", v: "Rua Professor Doutor José Marques da Cruz, 85 — São Paulo/SP — CEP 04707-020" },
+      { t: "kv", k: "CNPJ", v: "69.611.850/0001-22" },
+      { t: "kv", k: "Endereço", v: "Rua Heraclito Graça, 124, apto 33, Casa Verde Média — São Paulo/SP — CEP 02530-030" },
       { t: "kv", k: "E-mail de atendimento", v: "ola@almara.com.br" },
       { t: "kv", k: "WhatsApp", v: "(19) 99030-6995" },
       { t: "kv", k: "Horário de atendimento", v: "Segunda a sexta, das 8h às 18h" },
