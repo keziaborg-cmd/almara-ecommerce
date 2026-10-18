@@ -3,6 +3,7 @@ import { LegalPage, type LegalSection } from "@/components/legal/LegalPage";
 import { FormularioExclusao } from "@/components/legal/FormularioExclusao";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/excluir-conta" },
   title: "Excluir sua conta Almara+",
   description:
     "Como excluir sua conta Almara+ e os dados associados a ela, pelo aplicativo ou por esta página, sem precisar fazer login.",

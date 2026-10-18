@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { LegalPage, type LegalSection } from "@/components/legal/LegalPage";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/politica-de-trocas-e-devolucoes" },
   title: "Política de Trocas e Devoluções — Almara",
   description: "Prazos e procedimentos de troca, devolução, arrependimento, cancelamento e reembolso das compras na loja Almara.",
 };

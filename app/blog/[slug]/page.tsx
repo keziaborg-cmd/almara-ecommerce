@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { JsonLd } from "@/lib/seo/json-ld";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPublishedPosts, getPublishedPostBySlug, getRelatedPosts } from "@/lib/blog/posts";
@@ -60,7 +61,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
       description: post.excerpt,
       datePublished: post.date,
       author: author ? { "@type": "Person", name: author.name } : undefined,
-      publisher: { "@type": "Organization", name: "Almara" },
+      publisher: { "@id": `${SITE_URL}/#organizacao` },
       mainEntityOfPage: `${SITE_URL}/blog/${post.slug}`,
     },
     author && {
@@ -74,7 +75,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
 
   return (
     <main className="animate-pagein px-[6vw] py-14">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <JsonLd data={jsonLd as object[]} />
 
       <div className="mx-auto max-w-[760px]">
         <Link href="/blog" className="text-sm font-semibold text-verde-folha hover:underline">

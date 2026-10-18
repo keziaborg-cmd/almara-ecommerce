@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { teas } from "@/data/teas";
@@ -8,9 +9,14 @@ import { BenefitCard } from "@/components/ui/benefit-card";
 
 const CHIPS = ["Antioxidantes", "L-teanina", "Vitamina C", "Zinco"];
 
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+};
+
 export default function HomePage() {
   return (
     <main className="animate-pagein overflow-x-hidden">
+      <h1 className="sr-only">Almara — chás 100% naturais em lata e o app Almara+</h1>
       <div className="px-[6vw] pt-11 pb-[60px]">
         <div className="mx-auto max-w-container">
           <HeroCarousel />

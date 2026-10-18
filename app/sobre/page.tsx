@@ -5,6 +5,7 @@ import { BenefitCard } from "@/components/ui/benefit-card";
 import { BENEFIT_CARDS } from "@/data/benefits";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/sobre" },
   title: "Sobre — Almara",
   description: "A história da Almara: um ritual em cada lata.",
 };

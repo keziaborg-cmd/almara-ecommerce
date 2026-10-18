@@ -3,6 +3,7 @@ import { getPublishedPosts } from "@/lib/blog/posts";
 import { BlogListClient } from "@/components/blog/blog-list-client";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/blog" },
   title: "Blog — Almara",
   description: "Conteúdo sobre sono, ansiedade, produtividade e pausa — da equipe Almara, com fontes sempre citadas.",
 };

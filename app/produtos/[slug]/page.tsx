@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
+import { breadcrumbJsonLd, JsonLd, productJsonLd } from "@/lib/seo/json-ld";
 import { notFound } from "next/navigation";
 import { teas, getTeaBySlug, getOtherTeas, TEA_SLUGS } from "@/data/teas";
 import { pdpData } from "@/data/pdp-data";
@@ -24,6 +25,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return {
     title: `${tea.name} — Almara`,
     description: tea.about,
+    alternates: { canonical: `/produtos/${tea.slug}` },
   };
 }
 
@@ -41,6 +43,16 @@ export default async function ProdutoPage({ params }: { params: Promise<{ slug: 
 
   return (
     <main className="animate-pagein px-[6vw] py-10">
+      <JsonLd
+        data={[
+          productJsonLd(tea),
+          breadcrumbJsonLd([
+            { name: "Início", path: "/" },
+            { name: "Nossos chás", path: "/produtos" },
+            { name: tea.name, path: `/produtos/${tea.slug}` },
+          ]),
+        ]}
+      />
       <ViewItemTracker slug={tea.slug} name={tea.name} priceCents={tea.priceCents} />
       <div className="mx-auto max-w-[1240px] xl:max-w-[1400px] 2xl:max-w-[1600px]">
         <Link href="/produtos" className="text-sm font-semibold text-verde-folha hover:underline">

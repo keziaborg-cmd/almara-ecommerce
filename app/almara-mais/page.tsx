@@ -27,6 +27,7 @@ const nunito = Nunito({
 });
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/almara-mais" },
   title: "Almara+ — o app que continua sua jornada",
   description:
     "Conheça o Almara+: a Mara, as jornadas guiadas de 21 dias e como o Almara+ transforma o ritual do chá em hábito.",
