@@ -41,7 +41,9 @@ def write_article(client: Anthropic, conn, item: dict):
     try:
         response = client.messages.create(
             model=config.WRITE_MODEL,
-            max_tokens=4000,
+            # O Sonnet 5.5 pensa antes de responder e isso conta no limite: com folga, o JSON
+            # do artigo não sai cortado.
+            max_tokens=16000,
             system=WRITER_SYSTEM_PROMPT,
             messages=[{"role": "user", "content": prompt}],
         )

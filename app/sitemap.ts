@@ -4,6 +4,9 @@ import { BLOG_AUTHORS } from "@/data/blog-authors";
 import { getPublishedPosts } from "@/lib/blog/posts";
 import { SITE_URL } from "@/lib/site";
 
+// Posts novos são publicados pelo painel, sem deploy: a página se refaz sozinha a cada 15 min.
+export const revalidate = 900;
+
 
 // Páginas fixas do site + uma entrada por chá (gerado a partir de data/teas.ts,
 // então um novo blend adicionado ali já entra no sitemap sem precisar editar

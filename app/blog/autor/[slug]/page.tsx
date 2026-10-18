@@ -5,6 +5,9 @@ import { getPublishedPostsByAuthor } from "@/lib/blog/posts";
 import { PostCard } from "@/components/blog/post-card";
 import { SITE_URL } from "@/lib/site";
 
+// Posts novos são publicados pelo painel, sem deploy: a página se refaz sozinha a cada 15 min.
+export const revalidate = 900;
+
 
 export function generateStaticParams() {
   return BLOG_AUTHORS.map((author) => ({ slug: author.slug }));
