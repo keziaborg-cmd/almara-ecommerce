@@ -10,6 +10,8 @@ export interface BlogAuthor {
   photo?: string;
   /** Slugs antigos que ainda podem estar gravados nos posts (o endereço antigo redireciona com 301). */
   legacySlugs?: string[];
+  /** Autoria institucional (a própria marca) ou de uma pessoa — muda o tipo no JSON-LD. */
+  kind: "organizacao" | "pessoa";
 }
 
 export const BLOG_AUTHORS: BlogAuthor[] = [
@@ -17,6 +19,7 @@ export const BLOG_AUTHORS: BlogAuthor[] = [
     slug: "equipe-almara",
     legacySlugs: ["equipe-smartea"],
     name: "Equipe Almara",
+    kind: "organizacao",
     bio: "Conteúdo escrito pela equipe editorial da Almara, com apoio de fontes públicas confiáveis — sempre citadas ao final de cada artigo.",
   },
 ];

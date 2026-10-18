@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { JsonLd } from "@/lib/seo/json-ld";
 import { notFound } from "next/navigation";
 import { BLOG_AUTHORS, getBlogAuthorBySlug } from "@/data/blog-authors";
 import { getPublishedPostsByAuthor } from "@/lib/blog/posts";
@@ -33,7 +34,7 @@ export default async function BlogAuthorPage({ params }: { params: Promise<{ slu
 
   const jsonLd = {
     "@context": "https://schema.org",
-    "@type": "Person",
+    "@type": author.kind === "organizacao" ? "Organization" : "Person",
     name: author.name,
     description: author.bio,
     url: `${SITE_URL}/blog/autor/${author.slug}`,
@@ -41,7 +42,7 @@ export default async function BlogAuthorPage({ params }: { params: Promise<{ slu
 
   return (
     <main className="animate-pagein px-[6vw] py-14">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <JsonLd data={jsonLd} />
 
       <div className="mx-auto max-w-[900px]">
         <div className="text-center">

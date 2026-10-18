@@ -22,7 +22,7 @@ export function PostCard({ post }: { post: BlogPost }) {
         src={blogCoverPath(post.slug)}
         alt=""
         {...BLOG_COVER_SIZE}
-        unoptimized
+        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
         className="-mx-6 -mt-6 mb-1 h-auto w-[calc(100%+3rem)] max-w-none"
       />
       <CategoryBadge category={post.category} />
