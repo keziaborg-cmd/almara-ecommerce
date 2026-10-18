@@ -2,7 +2,7 @@ import hashlib
 import json
 import sqlite3
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from . import config
 
@@ -74,8 +74,19 @@ def insert_item(conn, *, title, link, published_at, summary, category, source_na
     )
 
 
+# Item que falhou na classificação (API fora, resposta ilegível) volta pra fila por esse
+# tempo; depois disso desiste, pra não pagar classificação de item velho pra sempre.
+RETRY_FAILED_DAYS = 14
+
+
 def items_pending_classification(conn):
-    rows = conn.execute("SELECT * FROM items WHERE status = 'collected'").fetchall()
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=RETRY_FAILED_DAYS)).isoformat()
+    rows = conn.execute(
+        """SELECT * FROM items
+           WHERE status = 'collected'
+              OR (status = 'classify_failed' AND collected_at >= ?)""",
+        (cutoff,),
+    ).fetchall()
     return [dict(r) for r in rows]
 
 

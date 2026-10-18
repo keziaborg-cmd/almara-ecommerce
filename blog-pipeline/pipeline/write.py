@@ -6,6 +6,7 @@ import unicodedata
 from anthropic import Anthropic
 
 from . import config, db
+from .jsonreply import parse_json_object
 from .prompts import WRITER_SYSTEM_PROMPT
 
 logger = logging.getLogger("blog_pipeline.write")
@@ -55,8 +56,8 @@ def write_article(client: Anthropic, conn, item: dict):
 
     text = _extract_text(response)
     try:
-        data = json.loads(text)
-    except json.JSONDecodeError as exc:
+        data = parse_json_object(text)
+    except ValueError as exc:  # inclui json.JSONDecodeError
         logger.warning("Resposta de redação não é JSON válido pra '%s': %s", item["title"], exc)
         return None
 

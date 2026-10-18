@@ -4,6 +4,7 @@ import logging
 from anthropic import Anthropic
 
 from . import config, db
+from .jsonreply import parse_json_object
 from .prompts import CLASSIFY_SYSTEM_PROMPT
 
 logger = logging.getLogger("blog_pipeline.classify")
@@ -40,7 +41,7 @@ def classify_item(client: Anthropic, conn, item: dict):
 
     text = _extract_text(response)
     try:
-        data = json.loads(text)
+        data = parse_json_object(text)
         category = data["category"]
         relevance = int(data["relevance"])
     except (json.JSONDecodeError, KeyError, ValueError, TypeError) as exc:
