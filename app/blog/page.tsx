@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { getPublishedPosts } from "@/lib/blog/posts";
 import { BlogListClient } from "@/components/blog/blog-list-client";
 
+// Posts novos são publicados pelo painel, sem deploy: a página se refaz sozinha a cada 15 min.
+export const revalidate = 900;
+
 export const metadata: Metadata = {
   alternates: { canonical: "/blog" },
   title: "Blog — Almara",

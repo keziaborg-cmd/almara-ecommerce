@@ -12,6 +12,9 @@ import { EmailCapture } from "@/components/blog/email-capture";
 import { ProfessionalSupportNotice } from "@/components/blog/professional-support-notice";
 import { SITE_URL } from "@/lib/site";
 
+// Posts novos são publicados pelo painel, sem deploy: a página se refaz sozinha a cada 15 min.
+export const revalidate = 900;
+
 
 export async function generateStaticParams() {
   const posts = await getPublishedPosts();

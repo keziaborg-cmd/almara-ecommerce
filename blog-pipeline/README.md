@@ -19,7 +19,7 @@ status, ver `supabase/migrations/20261006000000_blog_posts.sql`) e o site só l�
 2. **Classificação** (`pipeline/classify.py`) — usa `claude-haiku-4-5-20251001` pra
    confirmar a categoria e dar uma nota de relevância (0 a 10) pra cada item pendente.
    Depois, mantém só os 5 melhores por categoria.
-3. **Redação** (`pipeline/write.py`) — usa `claude-sonnet-5` pra escrever um artigo
+3. **Redação** (`pipeline/write.py`) — usa `claude-sonnet-5-5` pra escrever um artigo
    original (600 a 900 palavras) por item selecionado, seguindo as regras de marca e
    segurança do prompt de sistema (`pipeline/prompts.py`).
 4. **Publicação** (`pipeline/publish.py`) — insere um post por rascunho em
@@ -131,8 +131,8 @@ já publicado antes, não pular revisão.
 3. Clique em "Publicar". O post vira `status = 'publicado'` na hora — não existe edição
    de texto pelo painel nesta fase; pra corrigir algo antes de publicar, edite direto na
    tabela (SQL Editor do Supabase) ou peça pra reescrever.
-4. O artigo só aparece no site depois do próximo deploy (`vercel --prod` — a Vercel não
-   está conectada ao Git neste projeto, o deploy é sempre manual).
+4. O artigo aparece no site sozinho em até 15 minutos (o blog e o sitemap se refazem a
+   cada 15 min — `revalidate = 900`), sem precisar de deploy.
 
 ## Testes
 

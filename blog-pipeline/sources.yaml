@@ -1,9 +1,12 @@
 # Fontes de conteúdo pro pipeline do blog, agrupadas pelas mesmas 4
 # categorias do blog do site (sono, ansiedade, produtividade, pausa).
 #
-# Estes são exemplos de estrutura pra você substituir pelas fontes de
-# verdade que já escolheu — os valores abaixo não foram validados como
-# fontes editorialmente aprovadas, só mostram o formato esperado.
+# Fontes testadas em 2026-10-18: todas respondem ao feedparser sem bloqueio e
+# publicaram na semana do teste. Fontes que caíram e foram trocadas: Sleep
+# Foundation (feed parado desde 2025-11), ADAA (bloqueia acesso automatizado)
+# e HBR por página (sem feed; entrou o feed antigo da HBR, que ainda funciona).
+# A classificação escolhe os melhores itens por categoria; mais fontes = mais
+# opção, não mais artigos.
 #
 # "type: rss" é o único tipo totalmente implementado nesta primeira versão.
 # Uma fonte "type: page" (uma página sem feed RSS) fica registrada aqui,
@@ -16,21 +19,39 @@
 # específico pra esse site.
 
 sono:
-  - name: "Sleep Foundation"
+  - name: "Medical Xpress — Sono"
     type: rss
-    url: "https://www.sleepfoundation.org/feed"
+    url: "https://medicalxpress.com/rss-feed/sleep-news/"
+  - name: "ScienceDaily — Insônia"
+    type: rss
+    url: "https://www.sciencedaily.com/rss/health_medicine/insomnia.xml"
 
 ansiedade:
-  - name: "Anxiety & Depression Association of America"
+  - name: "ScienceDaily — Ansiedade"
     type: rss
-    url: "https://adaa.org/rss.xml"
+    url: "https://www.sciencedaily.com/rss/mind_brain/anxiety.xml"
+  - name: "ScienceDaily — Estresse"
+    type: rss
+    url: "https://www.sciencedaily.com/rss/mind_brain/stress.xml"
+  - name: "PsyPost"
+    type: rss
+    url: "https://www.psypost.org/feed/"
 
 produtividade:
   - name: "Harvard Business Review"
-    type: page
-    url: "https://hbr.org/topic/subject/productivity"
+    type: rss
+    url: "http://feeds.hbr.org/harvardbusiness"
+  - name: "Fast Company — Work Life"
+    type: rss
+    url: "https://www.fastcompany.com/work-life/rss"
+  - name: "ScienceDaily — Saúde no trabalho"
+    type: rss
+    url: "https://www.sciencedaily.com/rss/health_medicine/workplace_health.xml"
 
 pausa:
   - name: "Mindful.org"
     type: rss
     url: "https://www.mindful.org/feed/"
+  - name: "Greater Good (UC Berkeley)"
+    type: rss
+    url: "https://greatergood.berkeley.edu/site/rss/articles"

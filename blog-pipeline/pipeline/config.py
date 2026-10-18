@@ -14,12 +14,9 @@ DB_PATH = Path(os.environ.get("BLOG_PIPELINE_DB_PATH", BASE_DIR / "data" / "pipe
 
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
 
-# Nomes de modelo: claude-haiku-4-5-20251001 veio exatamente como especificado.
-# "claude-sonnet-5-5" não corresponde a nenhum modelo real da Anthropic no momento
-# desta implementação — usei o ID atual do Sonnet 5 (claude-sonnet-5). Se depois
-# existir um modelo com esse nome específico, troque aqui.
+# Modelos: Haiku 4.5 classifica (rápido e barato); Sonnet 5.5, o Sonnet atual, escreve.
 CLASSIFY_MODEL = "claude-haiku-4-5-20251001"
-WRITE_MODEL = "claude-sonnet-5"
+WRITE_MODEL = "claude-sonnet-5-5"
 
 TOP_N_PER_CATEGORY = 5
 COLLECT_WINDOW_DAYS = 7
