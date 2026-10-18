@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { JsonLd } from "@/lib/seo/json-ld";
+import Image from "next/image";
+import { BLOG_COVER_SIZE, blogCoverPath } from "@/lib/blog/cover-path";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPublishedPosts, getPublishedPostBySlug, getRelatedPosts } from "@/lib/blog/posts";
@@ -36,7 +38,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       url: `${SITE_URL}/blog/${post.slug}`,
       type: "article",
       publishedTime: post.date,
+      images: [{ url: blogCoverPath(post.slug), ...BLOG_COVER_SIZE, alt: post.title }],
     },
+    twitter: { card: "summary_large_image", images: [blogCoverPath(post.slug)] },
   };
 }
 
@@ -63,6 +67,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
       headline: post.title,
       description: post.excerpt,
       datePublished: post.date,
+      image: `${SITE_URL}${blogCoverPath(post.slug)}`,
       author: author ? { "@type": "Person", name: author.name } : undefined,
       publisher: { "@id": `${SITE_URL}/#organizacao` },
       mainEntityOfPage: `${SITE_URL}/blog/${post.slug}`,
@@ -85,7 +90,17 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
           ← Voltar pro blog
         </Link>
 
-        <div className="mt-5">
+        {/* capa gerada (ver lib/blog/cover.tsx); o título já está no h1, então ela é decorativa */}
+        <Image
+          src={blogCoverPath(post.slug)}
+          alt=""
+          {...BLOG_COVER_SIZE}
+          unoptimized
+          priority
+          className="mt-5 h-auto w-full rounded-card-conteudo"
+        />
+
+        <div className="mt-6">
           <CategoryBadge category={post.category} />
         </div>
         <h1 className="mt-4 font-display text-[clamp(34px,5vw,54px)] leading-tight text-verde-escuro">{post.title}</h1>
