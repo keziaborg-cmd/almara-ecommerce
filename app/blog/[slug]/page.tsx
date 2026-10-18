@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { JsonLd } from "@/lib/seo/json-ld";
+import { breadcrumbJsonLd, JsonLd } from "@/lib/seo/json-ld";
+import { metaDescription, seoTitle } from "@/lib/seo/text";
 import Image from "next/image";
 import { BLOG_COVER_SIZE, blogCoverPath } from "@/lib/blog/cover-path";
 import Link from "next/link";
@@ -29,8 +30,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   if (!post) return {};
 
   return {
-    title: `${post.title} — Blog Almara`,
-    description: post.excerpt,
+    title: seoTitle(post.title, [" — Blog Almara", " — Almara"]),
+    description: metaDescription(post.excerpt),
     alternates: { canonical: `${SITE_URL}/blog/${post.slug}` },
     openGraph: {
       title: post.title,
@@ -68,22 +69,24 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
       description: post.excerpt,
       datePublished: post.date,
       image: `${SITE_URL}${blogCoverPath(post.slug)}`,
-      author: author ? { "@type": "Person", name: author.name } : undefined,
+      author: author
+        ? author.kind === "organizacao"
+          ? { "@id": `${SITE_URL}/#organizacao` }
+          : { "@type": "Person", name: author.name, url: `${SITE_URL}/blog/autor/${author.slug}` }
+        : undefined,
       publisher: { "@id": `${SITE_URL}/#organizacao` },
       mainEntityOfPage: `${SITE_URL}/blog/${post.slug}`,
     },
-    author && {
-      "@context": "https://schema.org",
-      "@type": "Person",
-      name: author.name,
-      description: author.bio,
-      url: `${SITE_URL}/blog/autor/${author.slug}`,
-    },
-  ].filter(Boolean);
+    breadcrumbJsonLd([
+      { name: "Início", path: "/" },
+      { name: "Blog", path: "/blog" },
+      { name: post.title, path: `/blog/${post.slug}` },
+    ]),
+  ];
 
   return (
     <main className="animate-pagein px-[6vw] py-14">
-      <JsonLd data={jsonLd as object[]} />
+      <JsonLd data={jsonLd} />
 
       <div className="mx-auto max-w-[760px]">
         <Link href="/blog" className="text-sm font-semibold text-verde-folha hover:underline">
@@ -95,8 +98,9 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
           src={blogCoverPath(post.slug)}
           alt=""
           {...BLOG_COVER_SIZE}
-          unoptimized
-          priority
+          loading="eager"
+          fetchPriority="high"
+          sizes="(max-width: 808px) 100vw, 760px"
           className="mt-5 h-auto w-full rounded-card-conteudo"
         />
 
