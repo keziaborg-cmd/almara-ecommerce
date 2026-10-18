@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { LegalPage, type LegalSection } from "@/components/legal/LegalPage";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/suporte" },
   title: "Suporte — Almara",
   description:
     "Canais de atendimento da Almara e respostas para os assuntos mais comuns: pedidos, assinatura do Almara+, exclusão de conta e tratamento de dados.",

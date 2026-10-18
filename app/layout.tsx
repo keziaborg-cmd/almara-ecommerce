@@ -7,6 +7,7 @@ import { Footer } from "@/components/footer/footer";
 import { AppProviders } from "@/components/providers/app-providers";
 import { TrackingScripts } from "@/components/providers/tracking-scripts";
 import { SITE_URL } from "@/lib/site";
+import { JsonLd, organizationJsonLd, websiteJsonLd } from "@/lib/seo/json-ld";
 
 const carena = localFont({
   src: "../public/fonts/Carena-Regular.otf",
@@ -64,6 +65,7 @@ export default function RootLayout({
           <Footer />
         </AppProviders>
         <TrackingScripts />
+        <JsonLd data={[organizationJsonLd(), websiteJsonLd()]} />
       </body>
     </html>
   );

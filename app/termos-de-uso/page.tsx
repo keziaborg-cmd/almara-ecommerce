@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { LegalPage, type LegalSection } from "@/components/legal/LegalPage";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/termos-de-uso" },
   title: "Termos de Uso — Almara",
   description: "Termos de Uso do site e da loja virtual da Almara: compras, entrega, conta, propriedade intelectual e legislação aplicável.",
 };

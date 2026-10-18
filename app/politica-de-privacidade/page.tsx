@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { LegalPage, type LegalSection } from "@/components/legal/LegalPage";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/politica-de-privacidade" },
   title: "Política de Privacidade e Cookies — Almara",
   description: "Como a Almara trata dados pessoais no site e no aplicativo Almara+, quais são seus direitos e como exercê-los.",
 };

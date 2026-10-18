@@ -3,6 +3,7 @@ import { teas } from "@/data/teas";
 import { ProductCard } from "@/components/product/product-card";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/produtos" },
   title: "Nossos chás — Almara",
   description: "Os 6 blends de chá 100% natural da Almara. Escolha o seu ritual.",
 };
