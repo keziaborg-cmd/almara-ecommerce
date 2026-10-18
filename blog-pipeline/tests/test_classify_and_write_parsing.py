@@ -104,3 +104,32 @@ def test_write_article_descarta_artigo_curto_demais(db_module):
         draft = write.write_article(fake_client, conn, item)
 
     assert draft is None
+
+
+def test_classify_item_aceita_json_em_bloco_de_codigo_markdown(db_module):
+    # Formato real devolvido pelo Haiku na execução de 2026-10-18.
+    fake_client = _FakeClient(_fake_response('```json\n{"category": "pausa", "relevance": 9}\n```'))
+    item = {"category": "pausa", "title": "Why Can't We Rest Anymore?", "summary": "Resumo"}
+
+    with db_module.connect() as conn:
+        result = classify.classify_item(fake_client, conn, item)
+
+    assert result == ("pausa", 9)
+
+
+def test_classify_item_aceita_frase_antes_do_json(db_module):
+    fake_client = _FakeClient(_fake_response('Aqui está:\n{"category": "sono", "relevance": 7}'))
+    item = {"category": "sono", "title": "Título", "summary": "Resumo"}
+
+    with db_module.connect() as conn:
+        result = classify.classify_item(fake_client, conn, item)
+
+    assert result == ("sono", 7)
+
+
+def test_classify_item_devolve_none_se_json_nao_for_objeto(db_module):
+    fake_client = _FakeClient(_fake_response("[1, 2]"))
+    item = {"category": "sono", "title": "Título", "summary": "Resumo"}
+
+    with db_module.connect() as conn:
+        assert classify.classify_item(fake_client, conn, item) is None
