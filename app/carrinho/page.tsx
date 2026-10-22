@@ -19,7 +19,7 @@ import {
   FREE_SHIPPING_MIN_CENTS,
   type ShippingQuoteOption,
 } from "@/lib/cart/shipping-rules";
-import { applyCoupon, isValidCoupon, normalizeCouponCode, type CouponCode } from "@/lib/cart/coupons";
+import { applyCoupon, looksLikeCouponCode, normalizeCouponCode, type CouponRule } from "@/lib/cart/coupons";
 import { PaymentBrick, type PixPending } from "@/components/checkout/payment-brick";
 import { PixQrCode } from "@/components/checkout/pix-qr-code";
 import { StepBadge } from "@/components/checkout/step-badge";
@@ -112,7 +112,8 @@ export default function CarrinhoPage() {
   const [pixPending, setPixPending] = useState<PixPending | null>(null);
   const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
   const [couponInput, setCouponInput] = useState("");
-  const [appliedCoupon, setAppliedCoupon] = useState<CouponCode | null>(null);
+  const [appliedCoupon, setAppliedCoupon] = useState<CouponRule | null>(null);
+  const [couponChecking, setCouponChecking] = useState(false);
   const [couponError, setCouponError] = useState<string | null>(null);
   const [marketingConsent, setMarketingConsent] = useState({ email: false, whatsapp: false, sms: false });
   const sentIdentity = useRef({ email: "", phone: "" });
@@ -220,23 +221,45 @@ export default function CarrinhoPage() {
     track("address_completed", { city: form.cidade, uf: form.uf }, knownIdentity());
   }
 
-  function handleApplyCoupon() {
+  // O cupom é conferido no servidor (lista de cupons no banco: validade, limites, pedido mínimo).
+  // O limite por cliente só dá pra saber com o e-mail, então é conferido de novo ao criar o pedido.
+  async function handleApplyCoupon() {
     const normalized = normalizeCouponCode(couponInput);
     if (!normalized) {
       setCouponError("Digite um código.");
       return;
     }
-    if (!isValidCoupon(normalized)) {
+    if (!looksLikeCouponCode(normalized)) {
       setCouponError("Código inválido.");
       return;
     }
-    setAppliedCoupon(normalized);
+    setCouponChecking(true);
+    let rule: CouponRule | null = null;
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/shop-validate-coupon`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "" },
+        body: JSON.stringify({ code: normalized, subtotalCents: rawSubtotalCents }),
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.coupon) {
+        rule = data.coupon as CouponRule;
+      } else {
+        setCouponError(data?.message ?? "Código inválido.");
+      }
+    } catch {
+      setCouponError("Falha de conexão ao conferir o código. Tente novamente.");
+    } finally {
+      setCouponChecking(false);
+    }
+    if (!rule) return;
+    setAppliedCoupon(rule);
     setCouponError(null);
-    const discounted = applyCoupon(normalized, rawSubtotalCents, rawShippingFeeCents);
+    const discounted = applyCoupon(rule, rawSubtotalCents, rawShippingFeeCents);
     track(
       "coupon_applied",
       {
-        coupon: normalized,
+        coupon: rule.code,
         discount_cents: rawSubtotalCents - discounted.subtotalCents + (rawShippingFeeCents - discounted.shippingFeeCents),
       },
       knownIdentity(),
@@ -304,7 +327,7 @@ export default function CarrinhoPage() {
         discount_cents: rawSubtotalCents - subtotalCents + (rawShippingFeeCents - shippingFeeCents),
         shipping_cents: shippingFeeCents,
         total_cents: totalCents,
-        coupon: appliedCoupon,
+        coupon: appliedCoupon?.code ?? null,
       },
       knownIdentity(),
     );
@@ -330,7 +353,7 @@ export default function CarrinhoPage() {
             serviceId: selectedShipping.serviceId,
           },
           items: lines.map((l) => ({ slug: l.slug, qty: l.qty })),
-          couponCode: appliedCoupon ?? undefined,
+          couponCode: appliedCoupon?.code ?? undefined,
           tracking: getTrackingIds(),
           consents: { ...marketingConsent, textVersion: MARKETING_CONSENT_TEXT_VERSION },
         }),
@@ -340,6 +363,11 @@ export default function CarrinhoPage() {
         try {
           const data = await res.json();
           if (data?.message) message = data.message;
+          // Cupom deixou de valer (limite por cliente, expirou, esgotou): tira do carrinho e mostra o motivo.
+          if (data?.code === "invalid_coupon") {
+            setAppliedCoupon(null);
+            setCouponError(data?.message ?? "Código de desconto inválido.");
+          }
           // A opção escolhida deixou de existir (ou o frete mudou): recota e deixa escolher de novo.
           if (data?.code === "shipping_service_unavailable") {
             setSelectedServiceId(null);
@@ -566,7 +594,7 @@ export default function CarrinhoPage() {
                   {appliedCoupon ? (
                     <div className="flex items-center justify-between rounded-input bg-creme/10 px-3.5 py-2.5 text-sm text-creme">
                       <span>
-                        Código <strong>{appliedCoupon}</strong> aplicado
+                        Código <strong>{appliedCoupon.code}</strong> aplicado
                       </span>
                       <button
                         onClick={handleRemoveCoupon}
@@ -595,9 +623,10 @@ export default function CarrinhoPage() {
                       />
                       <button
                         onClick={handleApplyCoupon}
-                        className="shrink-0 rounded-input bg-creme/15 px-4 py-2.5 text-sm font-semibold text-creme hover:bg-creme/25"
+                        disabled={couponChecking}
+                        className="shrink-0 rounded-input bg-creme/15 px-4 py-2.5 text-sm font-semibold text-creme hover:bg-creme/25 disabled:opacity-60"
                       >
-                        Aplicar
+                        {couponChecking ? "Conferindo…" : "Aplicar"}
                       </button>
                     </div>
                   )}
