@@ -22,7 +22,7 @@ const MARA_BULLETS = [
 ];
 
 const ATIVACAO_STEPS = [
-  { title: "Baixe o Almara+", text: "Disponível na App Store e no Google Play, com 14 dias grátis." },
+  { title: "Baixe o Almara+", text: "Disponível na App Store e no Google Play, com 7 dias grátis." },
   { title: "Escolha sua jornada", text: "Sono, Ansiedade, Produtividade ou Pausa. Todas disponíveis desde o primeiro dia." },
   { title: "Escolha o chá do seu ritual", text: "Um dos nossos, um que você já tem em casa, ou nenhum. A jornada é sua, o chá acompanha do seu jeito." },
 ];
@@ -92,6 +92,52 @@ function TeaStack() {
   );
 }
 
+// O que é gratuito e o que é do Almara+ — igual ao app.
+const FREE_ITEMS = [
+  "Pomodoro, Respiração guiada e Wim Hof",
+  "Lista de tarefas e Hábitos",
+  "Diário (com os modelos e fontes básicos)",
+  "1 meta por vez",
+  "Quadro dos sonhos com até 3 sonhos",
+  "Seu Jardim e o Álbum da Mara, com o que você já conquistou",
+];
+
+const PLUS_ITEMS = [
+  "Jornadas guiadas de 21 dias: Sono, Ansiedade, Produtividade e Pausa",
+  "Converse com a Mara por texto e por voz",
+  "Cada dia cuidado vira uma planta no seu jardim",
+  "Até 3 metas, com check-in semanal com a Mara",
+  "Quadro dos sonhos sem limite, com o modo Contemplar",
+  "1% Melhor e os painéis de evolução",
+  "Todos os modelos e fontes do Diário",
+  "Suas tarefas do Trello e do ClickUp dentro do app",
+];
+
+function PlanColumn({ title, badge, items, checkColor, highlight }: { title: string; badge: string; items: string[]; checkColor: string; highlight?: boolean }) {
+  return (
+    <div className={`rounded-2xl border-2 bg-white px-4 py-4 ${highlight ? "border-[#dcb45c]" : "border-tinta-mais/10"}`}>
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="font-display-mais text-lg font-bold text-tinta-mais">{title}</p>
+        <span
+          className={`rounded-full px-2.5 py-0.5 font-body-mais text-[10px] font-extrabold ${highlight ? "bg-[#dcb45c] text-[#013f24]" : "bg-folha-viva-clara text-folha-viva-escura"}`}
+        >
+          {badge}
+        </span>
+      </div>
+      <ul className="mt-3 space-y-2">
+        {items.map((item) => (
+          <li key={item} className="flex items-start gap-2 font-body-mais text-sm leading-snug text-tinta-mais/80">
+            <svg viewBox="0 0 24 24" width="16" height="16" className="mt-0.5 shrink-0" fill="none" stroke={checkColor} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M5 12.5l4.5 4.5L19 7.5" />
+            </svg>
+            {item}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 type FeatureRowProps = {
   reverse?: boolean;
   eyebrow: string;
@@ -99,12 +145,16 @@ type FeatureRowProps = {
   bg: string;
   children: React.ReactNode;
   visual: React.ReactNode;
+  /** Texto mais largo que o visual (3:2) — pra seção com bastante conteúdo, como a de assinatura. */
+  wide?: boolean;
 };
 
-function FeatureRow({ reverse, eyebrow, title, bg, children, visual }: FeatureRowProps) {
+function FeatureRow({ reverse, eyebrow, title, bg, children, visual, wide }: FeatureRowProps) {
+  // com reverse, o visual (1º filho) vai pra 2ª coluna; a coluna larga é sempre a do texto
+  const cols = wide ? (reverse ? "md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]" : "md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]") : "md:grid-cols-2";
   return (
     <div className={`rounded-[32px] ${bg} px-7 py-10 sm:px-10 sm:py-12`}>
-      <div className={`mx-auto grid max-w-[1000px] items-center gap-10 md:grid-cols-2 xl:max-w-[1140px] 2xl:max-w-[1300px] ${reverse ? "md:[&>*:first-child]:order-2" : ""}`}>
+      <div className={`mx-auto grid max-w-[1000px] items-center gap-10 ${cols} xl:max-w-[1140px] 2xl:max-w-[1300px] ${reverse ? "md:[&>*:first-child]:order-2" : ""}`}>
         <div className="flex justify-center">{visual}</div>
         <div>
           <span className="inline-block rounded-full bg-white px-4 py-1.5 font-body-mais text-xs font-extrabold uppercase tracking-wide text-folha-viva-escura">
@@ -171,16 +221,21 @@ export function FeaturesSection() {
         </Link>
       </FeatureRow>
 
-      <FeatureRow reverse eyebrow="Assinatura" title="Continue além do trial" bg="bg-jornada-pausa-clara" visual={<MaraSubscribeVisual />}>
+      <FeatureRow reverse wide eyebrow="Assinatura" title="Comece grátis. Vá além com o Almara+" bg="bg-jornada-pausa-clara" visual={<MaraSubscribeVisual />}>
         <p className="font-body-mais text-tinta-mais/75">
-          Toda jornada começa com um trial gratuito — depois, escolha o plano que faz sentido pra
-          continuar com a Mara.
+          As ferramentas do dia a dia são suas, de graça, pra sempre. O Almara+ abre as jornadas
+          guiadas, a Mara e tudo que faz o seu jardim crescer. Os primeiros 7 dias são por nossa conta,
+          com tudo liberado.
         </p>
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-2">
+          <PlanColumn title="Gratuito" badge="pra sempre" items={FREE_ITEMS} checkColor="#568833" />
+          <PlanColumn title="Almara+" badge="tudo do gratuito, e mais" items={PLUS_ITEMS} checkColor="#dcb45c" highlight />
+        </div>
+        <div className="mt-6 grid gap-3 sm:grid-cols-3">
           <div className="rounded-2xl border-2 border-tinta-mais/10 bg-white px-4 py-4 text-center">
-            <p className="font-body-mais text-xs font-extrabold uppercase tracking-wide text-tinta-mais/60">Trial</p>
-            <p className="mt-1 font-display-mais text-xl font-bold text-tinta-mais">14 dias</p>
-            <p className="font-body-mais text-xs text-tinta-mais/60">grátis</p>
+            <p className="font-body-mais text-xs font-extrabold uppercase tracking-wide text-tinta-mais/60">Teste grátis</p>
+            <p className="mt-1 font-display-mais text-xl font-bold text-tinta-mais">7 dias</p>
+            <p className="font-body-mais text-xs text-tinta-mais/60">com tudo liberado</p>
           </div>
           <div className="rounded-2xl border-2 border-tinta-mais/10 bg-white px-4 py-4 text-center">
             <p className="font-body-mais text-xs font-extrabold uppercase tracking-wide text-tinta-mais/60">Mensal</p>
@@ -189,16 +244,23 @@ export function FeaturesSection() {
           </div>
           <div className="relative rounded-2xl border-2 border-jornada-pausa bg-white px-4 py-4 text-center">
             <span className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-jornada-pausa px-2.5 py-0.5 font-body-mais text-[10px] font-extrabold text-white">
-              melhor valor
+              economize 39%
             </span>
             <p className="font-body-mais text-xs font-extrabold uppercase tracking-wide text-tinta-mais/60">Anual</p>
             <p className="mt-1 font-display-mais text-xl font-bold text-tinta-mais">R$ 219,90</p>
-            <p className="font-body-mais text-xs text-tinta-mais/60">por ano</p>
+            <p className="font-body-mais text-xs text-tinta-mais/60">
+              por ano
+              <span className="block whitespace-nowrap">equivale a R$ 18,33/mês</span>
+            </p>
           </div>
         </div>
+        <p className="mt-3 font-body-mais text-[11px] leading-snug text-tinta-mais/60">
+          O teste começa quando você cria a conta e termina sem cobrança. Se assinar, a cobrança começa
+          na hora, pela App Store ou Google Play, e você cancela quando quiser na loja.
+        </p>
         <div className="mt-5">
           <PillButton3D href="/quiz" variant="primary">
-            Começar meu trial grátis
+            Começar meu teste grátis
           </PillButton3D>
         </div>
       </FeatureRow>
