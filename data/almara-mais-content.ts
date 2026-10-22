@@ -115,6 +115,6 @@ export const TOOLS: {
 export const ACHIEVEMENTS = [
   { value: "4", label: "jornadas guiadas" },
   { value: "21", label: "dias por jornada" },
-  { value: "6", label: "ferramentas no app" },
-  { value: "12", label: "itens de jardim" },
+  { value: "10", label: "ferramentas no app" },
+  { value: "84", label: "plantas no jardim" },
 ];
