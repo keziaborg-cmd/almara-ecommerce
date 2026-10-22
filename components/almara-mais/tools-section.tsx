@@ -3,26 +3,18 @@
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Heart, Leaf, Star, type LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { TOOLS, type ToolIcon } from "@/data/almara-mais-content";
+import { TOOLS, type ToolIcon, type ToolPalette } from "@/data/almara-mais-content";
 import { ToolIconGraphic } from "@/components/almara-mais/tool-icon";
 
-const COLORS = ["bg-folha-viva", "bg-jornada-sono", "bg-jornada-ansiedade", "bg-jornada-produtividade", "bg-jornada-pausa"];
-const BG_CLARA = [
-  "bg-folha-viva-clara",
-  "bg-jornada-sono-clara",
-  "bg-jornada-ansiedade-clara",
-  "bg-jornada-produtividade-clara",
-  "bg-jornada-pausa-clara",
-];
-const SHADOWS = [
-  "var(--color-folha-viva-escura)",
-  "var(--color-jornada-sono-escura)",
-  "var(--color-jornada-ansiedade-escura)",
-  "var(--color-jornada-produtividade-escura)",
-  "var(--color-jornada-pausa-escura)",
-];
+// Paletas do círculo do ícone, iguais às do app. "lip" é a sombra embaixo do círculo (efeito 3D do
+// .btn-3d); "tint" é o fundo claro do card, a mesma cor bem suave.
+const PALETTES: Record<ToolPalette, { bg: string; icon: string; lip: string; tint: string }> = {
+  G: { bg: "#568833", icon: "#fffdf8", lip: "#2f5219", tint: "#e6ede0" },
+  D: { bg: "#013f24", icon: "#e2c06a", lip: "#000f08", tint: "#e0e8e5" },
+  Y: { bg: "#dcb45c", icon: "#013f24", lip: "#8a6a21", tint: "#f7efdb" },
+};
 
-// só 2 dos 6 tools têm badge (ver TOOLS em almara-mais-content.ts) — ícone
+// só 2 das 10 ferramentas têm badge (ver TOOLS em almara-mais-content.ts) — ícone
 // escolhido pelo sentido do texto, não genérico: coração pra "favorita",
 // estrela pra "mais usada"/em alta.
 const BADGE_ICON: Partial<Record<ToolIcon, LucideIcon>> = {
@@ -246,7 +238,7 @@ export function ToolsSection() {
           Ecossistema
         </span>
         <h2 className="mt-3 font-display-mais text-3xl font-bold text-tinta-mais sm:text-4xl">
-          Seu ecossistema de bem-estar, em 6 peças
+          Seu ecossistema de bem-estar, em 10 peças
         </h2>
         <p className="mx-auto mt-3 max-w-md font-body-mais text-tinta-mais/70">
           Fora da jornada guiada, o app também é um ecossistema de bem-estar sempre à mão.
@@ -323,6 +315,7 @@ export function ToolsSection() {
         >
           {TOOLS.map((tool, i) => {
             const BadgeIcon = tool.badge ? BADGE_ICON[tool.icon] : undefined;
+            const palette = PALETTES[tool.palette];
             return (
               <div
                 key={tool.icon}
@@ -334,17 +327,13 @@ export function ToolsSection() {
                 <Link
                   href={TOOL_HREF}
                   onClick={onCardClick}
-                  style={{ "--tool-shadow-color": SHADOWS[i % SHADOWS.length] } as React.CSSProperties}
-                  className={`group relative flex w-[168px] flex-col items-center gap-2.5 rounded-3xl border-2 border-white/70 px-3 pb-4 pt-5 text-center shadow-sm transition-all duration-[350ms] ease-out hover:-translate-y-1 hover:scale-[1.04] hover:border-tinta-mais/10 hover:bg-white hover:shadow-[0_20px_38px_-14px_color-mix(in_srgb,var(--tool-shadow-color)_45%,transparent)] focus-visible:-translate-y-1 focus-visible:scale-[1.04] focus-visible:border-tinta-mais/10 focus-visible:bg-white focus-visible:shadow-[0_20px_38px_-14px_color-mix(in_srgb,var(--tool-shadow-color)_45%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-folha-viva-escura focus-visible:ring-offset-2 ${
-                    BG_CLARA[i % BG_CLARA.length]
-                  }`}
+                  style={{ "--tool-shadow-color": palette.lip, "--tool-tint": palette.tint } as React.CSSProperties}
+                  className={`group relative flex w-[168px] flex-col items-center gap-2.5 rounded-3xl border-2 border-white/70 px-3 pb-4 pt-5 text-center shadow-sm transition-all duration-[350ms] ease-out hover:-translate-y-1 hover:scale-[1.04] hover:border-tinta-mais/10 hover:bg-white hover:shadow-[0_20px_38px_-14px_color-mix(in_srgb,var(--tool-shadow-color)_45%,transparent)] focus-visible:-translate-y-1 focus-visible:scale-[1.04] focus-visible:border-tinta-mais/10 focus-visible:bg-white focus-visible:shadow-[0_20px_38px_-14px_color-mix(in_srgb,var(--tool-shadow-color)_45%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-folha-viva-escura focus-visible:ring-offset-2 bg-[var(--tool-tint)]`}
                 >
                   {tool.badge && BadgeIcon && (
                     <span
-                      className={`pointer-events-none absolute -top-3 left-1/2 z-20 flex items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-1 font-body-mais text-[9px] font-extrabold uppercase tracking-wide text-white shadow-sm ring-2 ring-white ${
-                        COLORS[i % COLORS.length]
-                      }`}
-                      style={{ transform: "translateX(-50%) rotate(-3deg)" }}
+                      className="pointer-events-none absolute -top-3 left-1/2 z-20 flex items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-1 font-body-mais text-[9px] font-extrabold uppercase tracking-wide shadow-sm ring-2 ring-white"
+                      style={{ transform: "translateX(-50%) rotate(-3deg)", background: palette.bg, color: palette.icon }}
                     >
                       <BadgeIcon className="h-2.5 w-2.5" fill="currentColor" aria-hidden />
                       {tool.badge}
@@ -352,17 +341,18 @@ export function ToolsSection() {
                   )}
 
                   <div
-                    className={`btn-3d flex h-[68px] w-[68px] items-center justify-center rounded-full ${COLORS[i % COLORS.length]} ${
+                    className={`btn-3d flex h-[68px] w-[68px] items-center justify-center rounded-full ${
                       showEntered ? "animate-tool-pop" : ""
                     }`}
                     style={
                       {
-                        "--btn-shadow": SHADOWS[i % SHADOWS.length],
+                        background: palette.bg,
+                        "--btn-shadow": palette.lip,
                         animationDelay: `${i * STAGGER_STEP_MS + 120}ms`,
                       } as React.CSSProperties
                     }
                   >
-                    <ToolIconGraphic icon={tool.icon} />
+                    <ToolIconGraphic icon={tool.icon} color={palette.icon} />
                   </div>
 
                   <div>
