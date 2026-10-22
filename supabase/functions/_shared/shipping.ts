@@ -40,3 +40,21 @@ export function parseQuoteItems(raw: unknown): { slug: string; qty: number }[] |
   }
   return [...merged].map(([slug, qty]) => ({ slug, qty }));
 }
+
+/** O CEP existe nos Correios? Consulta o ViaCEP. true/false quando ele responde; null quando não dá
+ * pra saber (fora do ar, resposta estranha) — aí quem chama trata como falha temporária. */
+export async function cepExists(cep: string, fetchFn: typeof fetch = fetch): Promise<boolean | null> {
+  try {
+    const res = await fetchFn(`https://viacep.com.br/ws/${cep}/json/`, { signal: AbortSignal.timeout(4000) });
+    if (res.status === 400) return false;
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data?.erro === true || data?.erro === "true") return false;
+    return typeof data?.cep === "string" ? true : null;
+  } catch {
+    return null;
+  }
+}
+
+export const CEP_NOT_FOUND_MESSAGE =
+  "Não encontramos este CEP nos Correios. Confira o CEP da sua rua (CEPs terminados em 000 costumam ser da cidade toda e não servem para entrega).";

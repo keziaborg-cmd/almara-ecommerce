@@ -4,7 +4,7 @@
 import { makeResponders } from "../_shared/cors.ts";
 import { createAdminClient } from "../_shared/supabase-admin.ts";
 import { calculateShipping, SHIPPING_ENVIRONMENT } from "../_shared/melhorEnvio.ts";
-import { normalizeCep, parseQuoteItems } from "../_shared/shipping.ts";
+import { CEP_NOT_FOUND_MESSAGE, cepExists, normalizeCep, parseQuoteItems } from "../_shared/shipping.ts";
 
 Deno.serve(async (req) => {
   const { json, preflight } = makeResponders(req);
@@ -45,6 +45,11 @@ Deno.serve(async (req) => {
       options = await calculateShipping(cep, items, catalog);
     } catch (e) {
       console.error("shop-calculate-shipping: falha no Melhor Envio", (e as Error).message);
+      // O Melhor Envio recusa CEP que não existe (ex.: 69900-000, genérico da cidade) do mesmo jeito
+      // que uma falha dele. Se os Correios não conhecem o CEP, pede pra conferir em vez de "tente de novo".
+      if ((await cepExists(cep)) === false) {
+        return json({ code: "cep_not_found", message: CEP_NOT_FOUND_MESSAGE }, 400);
+      }
       return json({ code: "shipping_unavailable", message: "Não foi possível calcular o frete agora. Tente novamente em instantes." }, 502);
     }
 
