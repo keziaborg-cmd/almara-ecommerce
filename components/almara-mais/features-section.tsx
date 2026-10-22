@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { PillButton3D } from "@/components/almara-mais/pill-button-3d";
-import { GardenDemoLoop } from "@/components/garden/GardenDemoLoop";
+import { GardenVideo } from "@/components/garden/GardenVideo";
 
 function MaraPhoto({ className, src = "/mara.png" }: { className?: string; src?: string }) {
   return (
@@ -59,24 +59,6 @@ function MaraSubscribeVisual() {
       <Sparkle className="pointer-events-none absolute bottom-6 left-8 h-5 w-5 text-jornada-pausa opacity-70" />
       <MaraPhoto className="relative z-0 h-[240px] w-auto md:h-[360px]" />
     </div>
-  );
-}
-
-function GardenGraphic() {
-  return (
-    <svg viewBox="0 0 220 220" className="h-auto w-full max-w-[260px]" role="img" aria-label="Jardim de progresso">
-      <ellipse cx="110" cy="196" rx="70" ry="10" fill="#22331c" opacity="0.08" />
-      <path d="M60,190 L70,120 Q110,105 150,120 L160,190 Z" fill="#324e19" />
-      <path d="M60,190 Q110,206 160,190 L156,178 Q110,192 64,178 Z" fill="#264d17" />
-      <path
-        d="M110,120 C90,90 92,55 115,30 C130,60 122,95 110,120 Z"
-        fill="#477023"
-      />
-      <path d="M110,120 C130,95 158,85 182,92 C172,115 145,128 110,120 Z" fill="#8a9a3e" />
-      <path d="M110,120 C88,100 62,95 40,105 C52,127 80,134 110,120 Z" fill="#5c8a72" />
-      <circle cx="115" cy="34" r="9" fill="#b0685f" />
-      <circle cx="112" cy="31" r="3" fill="#f0ddd8" />
-    </svg>
   );
 }
 
@@ -159,12 +141,11 @@ export function FeaturesSection() {
         eyebrow="Seu progresso"
         title="Cada dia de ritual faz seu jardim crescer"
         bg="bg-jornada-produtividade-clara"
-        visual={<GardenDemoLoop fallback={<GardenGraphic />} />}
+        visual={<GardenVideo />}
       >
         <p className="font-body-mais text-tinta-mais/75">
-          No Almara+, seu progresso na jornada vira um jardim que cresce a cada dia de ritual
-          cumprido — um jeito visual e gentil de acompanhar sua constância, com 12 itens diferentes
-          pra desbloquear.
+          No Almara+, seu progresso na jornada vira um jardim: cada dia de ritual cumprido planta
+          uma flor nova, até as 84 — um jeito visual e gentil de acompanhar sua constância.
         </p>
       </FeatureRow>
 
