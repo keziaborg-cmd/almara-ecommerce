@@ -1,28 +1,44 @@
-// Mirrors supabase/functions/_shared/coupons.ts (Deno edge functions can't
-// import from this Next.js app's lib/, so the two runtimes keep their own
-// copy — same pattern already used for ShippingMethod/shippingFeeCents).
-// This copy is for client-side preview only; the backend recomputes the
-// discount authoritatively and never trusts a client-sent total.
-export type CouponCode = "BEM10" | "FRETEZERO";
+// Espelho de supabase/functions/_shared/coupons.ts (as edge functions em Deno não importam de
+// fora de supabase/functions). Aqui é só pré-visualização no carrinho: quem decide se o cupom
+// vale e quanto desconta é o servidor (shop-validate-coupon e shop-create-order).
 
-const VALID_CODES: readonly CouponCode[] = ["BEM10", "FRETEZERO"];
+export type CouponKind = "percent" | "free_shipping";
+
+export interface CouponRule {
+  code: string;
+  kind: CouponKind;
+  /** % nos chás quando kind = "percent". */
+  percentOff: number | null;
+}
 
 export function normalizeCouponCode(raw: string): string {
   return raw.trim().toUpperCase();
 }
 
-export function isValidCoupon(code: string): code is CouponCode {
-  return (VALID_CODES as readonly string[]).includes(code);
+/** Formato aceito pela tabela (3 a 24 letras/números). Evita ir ao banco com lixo. */
+export function looksLikeCouponCode(code: string): boolean {
+  return /^[A-Z0-9]{3,24}$/.test(code);
+}
+
+/** Converte o retorno de shop_coupon_check numa regra, ou null se não vale. */
+export function ruleFromCheck(check: unknown): CouponRule | null {
+  const c = check as { ok?: unknown; code?: unknown; kind?: unknown; percent_off?: unknown } | null;
+  if (!c || c.ok !== true || typeof c.code !== "string") return null;
+  if (c.kind === "free_shipping") return { code: c.code, kind: "free_shipping", percentOff: null };
+  if (c.kind === "percent" && typeof c.percent_off === "number" && c.percent_off >= 1 && c.percent_off <= 90) {
+    return { code: c.code, kind: "percent", percentOff: c.percent_off };
+  }
+  return null;
 }
 
 export function applyCoupon(
-  code: CouponCode,
+  rule: CouponRule,
   subtotalCents: number,
   shippingFeeCents: number,
 ): { subtotalCents: number; shippingFeeCents: number } {
-  if (code === "BEM10") {
-    return { subtotalCents: Math.round(subtotalCents * 0.9), shippingFeeCents };
+  if (rule.kind === "percent" && rule.percentOff != null) {
+    return { subtotalCents: Math.round(subtotalCents * (1 - rule.percentOff / 100)), shippingFeeCents };
   }
-  // FRETEZERO
-  return { subtotalCents, shippingFeeCents: 0 };
+  if (rule.kind === "free_shipping") return { subtotalCents, shippingFeeCents: 0 };
+  return { subtotalCents, shippingFeeCents };
 }

@@ -5,7 +5,7 @@ import { calculateShipping, SHIPPING_ENVIRONMENT } from "../_shared/melhorEnvio.
 import { generateOrderNumber } from "../_shared/order-number.ts";
 import { createPreference } from "../_shared/mercadopago.ts";
 import { tierForCartUnits, unitPriceForTier } from "../_shared/pricing.ts";
-import { applyCoupon, isValidCoupon, normalizeCouponCode } from "../_shared/coupons.ts";
+import { applyCoupon, looksLikeCouponCode, normalizeCouponCode, ruleFromCheck, type CouponRule } from "../_shared/coupons.ts";
 import { crmTrack, sanitizeTracking } from "../_shared/crm.ts";
 
 interface RequestBody {
@@ -62,10 +62,9 @@ Deno.serve(async (req) => {
 
     const rawCoupon = couponCode?.trim() ?? "";
     const normalizedCoupon = rawCoupon ? normalizeCouponCode(rawCoupon) : "";
-    if (rawCoupon && !isValidCoupon(normalizedCoupon)) {
-      return json({ message: "Código de desconto inválido." }, 400);
+    if (rawCoupon && !looksLikeCouponCode(normalizedCoupon)) {
+      return json({ code: "invalid_coupon", message: "Código de desconto inválido." }, 400);
     }
-    const coupon = normalizedCoupon && isValidCoupon(normalizedCoupon) ? normalizedCoupon : null;
 
     const supabase = createAdminClient();
 
@@ -108,6 +107,22 @@ Deno.serve(async (req) => {
     });
 
     const rawSubtotalCents = orderItems.reduce((sum, i) => sum + i.subtotal_cents, 0);
+
+    // Cupom: a regra e os limites (validade, usos, por cliente, pedido mínimo) vêm do banco.
+    let coupon: CouponRule | null = null;
+    if (normalizedCoupon) {
+      const { data: check, error: couponError } = await supabase.rpc("shop_coupon_check", {
+        p_code: normalizedCoupon,
+        p_email: customer.email,
+        p_subtotal_cents: rawSubtotalCents,
+      });
+      if (couponError) throw couponError;
+      coupon = ruleFromCheck(check);
+      if (!coupon) {
+        const reason = (check as { reason?: unknown } | null)?.reason;
+        return json({ code: "invalid_coupon", message: typeof reason === "string" ? reason : "Código de desconto inválido." }, 400);
+      }
+    }
 
     // Frete: recotado no Melhor Envio com o CEP e os itens que o servidor conhece, e o serviço
     // escolhido tem que estar entre as opções de agora. Nada de preço vindo do cliente.
@@ -185,7 +200,7 @@ Deno.serve(async (req) => {
           shipping_fee_cents: shippingFee,
           subtotal_cents: subtotalCents,
           total_cents: totalCents,
-          coupon_code: coupon,
+          coupon_code: coupon?.code ?? null,
           status: "pending",
         })
         .select("id, order_number, access_token")
@@ -231,7 +246,7 @@ Deno.serve(async (req) => {
         discount_cents: rawSubtotalCents - subtotalCents + (rawShippingFee - shippingFee),
         shipping_cents: shippingFee,
         total_cents: totalCents,
-        coupon,
+        coupon: coupon?.code ?? null,
         shipping_city: shipping.cidade,
         shipping_uf: shipping.uf,
       },
