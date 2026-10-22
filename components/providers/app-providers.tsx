@@ -7,6 +7,7 @@ import { ContactModal } from "@/components/ui/contact-modal";
 import { CookieBanner } from "@/components/consent/cookie-banner";
 import { WhatsAppWidget } from "@/components/whatsapp/whatsapp-widget";
 import { CrmTracker } from "@/components/crm/crm-tracker";
+import { NewsletterPopup } from "@/components/newsletter/newsletter-popup";
 import { migrateLegacyStorage } from "@/lib/storage-keys";
 
 // Cart persistence uses skipHydration (see lib/cart/cart-store.ts) so the
@@ -25,6 +26,7 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
       <ContactModal />
       <WhatsAppWidget />
       <CookieBanner />
+      <NewsletterPopup />
       <CrmTracker />
     </>
   );
