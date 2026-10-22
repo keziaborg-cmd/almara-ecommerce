@@ -22,7 +22,7 @@ const MARA_BULLETS = [
 ];
 
 const ATIVACAO_STEPS = [
-  { title: "Baixe o Almara+", text: "Disponível na App Store e no Google Play, com 14 dias grátis." },
+  { title: "Baixe o Almara+", text: "Disponível na App Store e no Google Play, com 7 dias grátis." },
   { title: "Escolha sua jornada", text: "Sono, Ansiedade, Produtividade ou Pausa. Todas disponíveis desde o primeiro dia." },
   { title: "Escolha o chá do seu ritual", text: "Um dos nossos, um que você já tem em casa, ou nenhum. A jornada é sua, o chá acompanha do seu jeito." },
 ];
