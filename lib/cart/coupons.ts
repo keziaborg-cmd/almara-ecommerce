@@ -4,11 +4,17 @@
 
 export type CouponKind = "percent" | "free_shipping";
 
+export type ShippingBenefit = "none" | "free" | "capped";
+
 export interface CouponRule {
   code: string;
   kind: CouponKind;
   /** % nos chás quando kind = "percent". */
   percentOff: number | null;
+  /** Benefício no frete, junto (ou não) do desconto nos chás. */
+  shipping: ShippingBenefit;
+  /** Quando shipping = "capped": até quanto do frete o cupom paga. */
+  shippingCapCents: number | null;
 }
 
 export function normalizeCouponCode(raw: string): string {
@@ -22,11 +28,26 @@ export function looksLikeCouponCode(code: string): boolean {
 
 /** Converte o retorno de shop_coupon_check numa regra, ou null se não vale. */
 export function ruleFromCheck(check: unknown): CouponRule | null {
-  const c = check as { ok?: unknown; code?: unknown; kind?: unknown; percent_off?: unknown } | null;
+  const c = check as {
+    ok?: unknown;
+    code?: unknown;
+    kind?: unknown;
+    percent_off?: unknown;
+    shipping?: unknown;
+    shipping_cap_cents?: unknown;
+  } | null;
   if (!c || c.ok !== true || typeof c.code !== "string") return null;
-  if (c.kind === "free_shipping") return { code: c.code, kind: "free_shipping", percentOff: null };
+  // compatível com o retorno antigo (sem "shipping"): free_shipping = frete grátis
+  const shipping: ShippingBenefit =
+    c.shipping === "free" || c.shipping === "capped" || c.shipping === "none" ? c.shipping : c.kind === "free_shipping" ? "free" : "none";
+  const cap = typeof c.shipping_cap_cents === "number" && c.shipping_cap_cents > 0 ? c.shipping_cap_cents : null;
+  if (shipping === "capped" && cap == null) return null;
+  const shippingCapCents = shipping === "capped" ? cap : null;
+  if (c.kind === "free_shipping") {
+    return shipping === "none" ? null : { code: c.code, kind: "free_shipping", percentOff: null, shipping, shippingCapCents };
+  }
   if (c.kind === "percent" && typeof c.percent_off === "number" && c.percent_off >= 1 && c.percent_off <= 90) {
-    return { code: c.code, kind: "percent", percentOff: c.percent_off };
+    return { code: c.code, kind: "percent", percentOff: c.percent_off, shipping, shippingCapCents };
   }
   return null;
 }
@@ -36,9 +57,13 @@ export function applyCoupon(
   subtotalCents: number,
   shippingFeeCents: number,
 ): { subtotalCents: number; shippingFeeCents: number } {
-  if (rule.kind === "percent" && rule.percentOff != null) {
-    return { subtotalCents: Math.round(subtotalCents * (1 - rule.percentOff / 100)), shippingFeeCents };
-  }
-  if (rule.kind === "free_shipping") return { subtotalCents, shippingFeeCents: 0 };
-  return { subtotalCents, shippingFeeCents };
+  const subtotal =
+    rule.kind === "percent" && rule.percentOff != null ? Math.round(subtotalCents * (1 - rule.percentOff / 100)) : subtotalCents;
+  const shipping =
+    rule.shipping === "free"
+      ? 0
+      : rule.shipping === "capped" && rule.shippingCapCents != null
+        ? Math.max(0, shippingFeeCents - rule.shippingCapCents)
+        : shippingFeeCents;
+  return { subtotalCents: subtotal, shippingFeeCents: shipping };
 }
