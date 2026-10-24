@@ -12,6 +12,26 @@ export function findShippingOption(options: ShippingOption[], serviceId: unknown
   return options.find((o) => o.serviceId === serviceId) ?? null;
 }
 
+/** Quantas opções de entrega o carrinho mostra. Com todas as transportadoras ligadas no Melhor
+ * Envio chegam até ~10 opções; uma lista longa confunde e faz desistir. */
+export const MAX_SHIPPING_OPTIONS = 3;
+
+/** As opções que o carrinho mostra: a mais barata, a mais rápida (no empate, a mais barata) e as
+ * próximas mais baratas até completar o máximo. Volta em ordem de preço (a 1ª já vem marcada). */
+export function pickShippingOptions(options: ShippingOption[], max = MAX_SHIPPING_OPTIONS): ShippingOption[] {
+  if (options.length <= max) return [...options].sort((a, b) => a.priceCents - b.priceCents);
+  const byPrice = [...options].sort((a, b) => a.priceCents - b.priceCents || a.deliveryDays - b.deliveryDays);
+  const fastest = [...options].sort((a, b) => a.deliveryDays - b.deliveryDays || a.priceCents - b.priceCents)[0];
+  const picked = new Map<string, ShippingOption>();
+  picked.set(byPrice[0].serviceId, byPrice[0]);
+  picked.set(fastest.serviceId, fastest);
+  for (const o of byPrice) {
+    if (picked.size >= max) break;
+    picked.set(o.serviceId, o);
+  }
+  return [...picked.values()].sort((a, b) => a.priceCents - b.priceCents);
+}
+
 /** Frete cobrado do cliente. `subtotalAfterCouponCents` é o valor dos produtos já com cupom. */
 export function chargedShippingCents(quoteCents: number, subtotalAfterCouponCents: number): number {
   return subtotalAfterCouponCents >= FREE_SHIPPING_MIN_CENTS ? 0 : quoteCents;
