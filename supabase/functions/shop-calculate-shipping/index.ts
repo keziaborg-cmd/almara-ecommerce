@@ -4,7 +4,7 @@
 import { makeResponders } from "../_shared/cors.ts";
 import { createAdminClient } from "../_shared/supabase-admin.ts";
 import { calculateShipping, SHIPPING_ENVIRONMENT } from "../_shared/melhorEnvio.ts";
-import { CEP_NOT_FOUND_MESSAGE, cepExists, normalizeCep, parseQuoteItems } from "../_shared/shipping.ts";
+import { CEP_NOT_FOUND_MESSAGE, cepExists, normalizeCep, parseQuoteItems, pickShippingOptions } from "../_shared/shipping.ts";
 
 Deno.serve(async (req) => {
   const { json, preflight } = makeResponders(req);
@@ -56,8 +56,9 @@ Deno.serve(async (req) => {
     if (options.length === 0) {
       return json({ code: "no_options", message: "Não encontramos opções de entrega para este CEP." }, 404);
     }
+    // O pedido (shop-create-order) recota e aceita qualquer serviço válido; aqui só limita o que aparece.
     return json({
-      options: options.map((o) => ({
+      options: pickShippingOptions(options).map((o) => ({
         serviceId: o.serviceId,
         name: o.name,
         company: o.company,
