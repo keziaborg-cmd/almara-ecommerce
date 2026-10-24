@@ -26,3 +26,20 @@ export async function unsubscribe(formData: FormData): Promise<void> {
   }
   redirect(channel ? `/descadastro?ok=${channel}` : "/descadastro?erro=link");
 }
+
+/** Descadastro da newsletter pelo token do e-mail (link "Cancelar inscrição"). Mesmo cuidado: POST. */
+export async function unsubscribeNewsletter(formData: FormData): Promise<void> {
+  const n = String(formData.get("n") ?? "");
+  if (!UUID_RE.test(n)) redirect("/descadastro?erro=link");
+  let channel: string | null = null;
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("newsletter_unsubscribe", { p_token: n });
+    if (error) throw error;
+    channel = data;
+  } catch (e) {
+    console.error(JSON.stringify({ src: "site-unsubscribe", evt: "newsletter_failed", message: e instanceof Error ? e.message.slice(0, 120) : "erro" }));
+    redirect(`/descadastro?n=${n}&erro=falha`);
+  }
+  redirect(channel ? `/descadastro?ok=${channel}` : "/descadastro?erro=link");
+}

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { unsubscribe } from "./actions";
+import { unsubscribe, unsubscribeNewsletter } from "./actions";
 
 export const metadata: Metadata = {
   title: "Descadastro — Almara",
@@ -11,9 +11,11 @@ export const metadata: Metadata = {
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const CHANNEL: Record<string, string> = { email: "e-mail", sms: "SMS", whatsapp: "WhatsApp", rcs: "RCS" };
 
-export default async function Page({ searchParams }: { searchParams: Promise<{ m?: string; ok?: string; erro?: string }> }) {
+export default async function Page({ searchParams }: { searchParams: Promise<{ m?: string; n?: string; ok?: string; erro?: string }> }) {
   const sp = await searchParams;
-  const valid = Boolean(sp.m && UUID_RE.test(sp.m));
+  // m = id de uma mensagem do CRM; n = token do inscrito da newsletter (e-mail do cupom)
+  const newsletter = Boolean(sp.n && UUID_RE.test(sp.n));
+  const valid = newsletter || Boolean(sp.m && UUID_RE.test(sp.m));
 
   return (
     <main className="mx-auto max-w-xl px-5 py-16 sm:py-24">
@@ -36,8 +38,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ m
           <a href="mailto:ola@almara.com.br" className="underline underline-offset-2">ola@almara.com.br</a>.
         </p>
       ) : (
-        <form action={unsubscribe} className="mt-6 space-y-4">
-          <input type="hidden" name="m" value={sp.m} />
+        <form action={newsletter ? unsubscribeNewsletter : unsubscribe} className="mt-6 space-y-4">
+          {newsletter ? <input type="hidden" name="n" value={sp.n} /> : <input type="hidden" name="m" value={sp.m} />}
           <p className="leading-relaxed text-tinta/80">
             Confirme pra parar de receber mensagens de marketing da Almara neste canal. Mensagens sobre seus pedidos continuam chegando.
           </p>

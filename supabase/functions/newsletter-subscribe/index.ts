@@ -43,6 +43,15 @@ Deno.serve(async (req) => {
       .select("id");
     if (insertError) throw insertError;
     const isNew = (inserted ?? []).length > 0;
+    // quem tinha saído e se inscreveu de novo volta pra lista (o newsletter_subscribed abaixo
+    // devolve o consentimento no CRM); o token do link de descadastro vem junto
+    const { data: sub, error: subError } = await supabase
+      .from("blog_subscribers")
+      .update({ unsubscribed_at: null })
+      .eq("email", email)
+      .select("unsubscribe_token")
+      .maybeSingle();
+    if (subError) throw subError;
 
     // newsletter_subscribed já grava o consentimento de e-mail no CRM (crm.consents), com a versão do texto.
     await crmTrack(supabase, {
@@ -63,7 +72,7 @@ Deno.serve(async (req) => {
       const { data: mine } = await supabase.rpc("shop_coupon_check", { p_code: WELCOME_COUPON, p_email: email, p_subtotal_cents: 0 });
       if (ruleFromCheck(mine)) {
         try {
-          await sendWelcomeCouponEmail(email, rule.code, rule.percentOff);
+          if (sub?.unsubscribe_token) await sendWelcomeCouponEmail(email, rule.code, rule.percentOff, String(sub.unsubscribe_token));
         } catch (e) {
           console.error("newsletter-subscribe: e-mail do cupom falhou", (e as Error).message);
         }
