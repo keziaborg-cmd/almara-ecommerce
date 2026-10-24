@@ -12,6 +12,11 @@ describe("frete: no máximo 3 opções no carrinho", () => {
     expect(pickShippingOptions(all).map((x) => x.serviceId)).toEqual(["jet", "loggi", "sedex"]);
   });
 
+  it("Acre (dados reais): entra o PAC no meio, não a Jadlog mais cara e mais lenta que a Loggi", () => {
+    const all = [o("loggi", 2151, 11), o("jadlog", 2339, 16), o("pac", 2759, 9), o("jet", 2879, 12), o("total", 4008, 10), o("azul", 4510, 8), o("sedex", 6059, 5), o("latam", 9129, 7), o("azulx", 9481, 6)];
+    expect(pickShippingOptions(all).map((x) => x.serviceId)).toEqual(["loggi", "pac", "sedex"]);
+  });
+
   it("a mais barata já é a mais rápida: completa com as próximas mais baratas", () => {
     const all = [o("a", 890, 1), o("b", 946, 3), o("c", 967, 1), o("d", 994, 1), o("e", 1154, 6)];
     expect(pickShippingOptions(all).map((x) => x.serviceId)).toEqual(["a", "b", "c"]);
