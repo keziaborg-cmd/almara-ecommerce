@@ -5,6 +5,7 @@ import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { formatCentsBRL } from "@/lib/cart/cart-store";
 import { trackPurchase } from "@/lib/tracking/events";
+import { ORDER_QR_PATH } from "@/lib/app-links";
 
 interface OrderStatus {
   orderNumber: string;
@@ -123,15 +124,33 @@ export default function PedidoConfirmacaoPage() {
           </div>
         </div>
 
-        <div className="mt-8 rounded-card-conteudo bg-verde-escuro p-6 text-left text-creme">
-          <p className="eyebrow text-dourado">
-            <span className="mr-2 rounded border border-dourado/40 px-1.5 py-0.5">APP</span>
-            Próximo passo
-          </p>
-          <p className="mt-2 text-sm text-texto-sobre-escuro">
-            Enquanto o chá não chega, já dá pra baixar o Almara+ e começar sua jornada de 21 dias — a
-            Mara te espera lá, e o chá acompanha quando quiser.
-          </p>
+        <div className="mt-8 flex items-center gap-6 rounded-card-conteudo bg-verde-escuro p-6 text-left text-creme">
+          <div className="flex-1">
+            <p className="eyebrow text-dourado">
+              <span className="mr-2 rounded border border-dourado/40 px-1.5 py-0.5">APP</span>
+              Próximo passo
+            </p>
+            <p className="mt-2 text-sm text-texto-sobre-escuro">
+              Enquanto o chá não chega, já dá pra baixar o Almara+ e começar sua jornada de 21 dias — a
+              Mara te espera lá, e o chá acompanha quando quiser.
+            </p>
+            {/* no celular não dá pra escanear a própria tela: lá vai um botão; no computador, o QR */}
+            <a
+              href={ORDER_QR_PATH}
+              className="mt-4 inline-block rounded-pill bg-dourado px-6 py-3 text-sm font-semibold text-verde-escuro md:hidden"
+            >
+              Baixar o Almara+
+            </a>
+            <p className="mt-3 hidden text-xs text-texto-sobre-escuro/80 md:block">Aponte a câmera do celular para o código.</p>
+          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element -- SVG estático pequeno, sem otimização a fazer */}
+          <img
+            src="/almara-mais/qr-app.svg"
+            alt="QR Code para baixar o app Almara+"
+            width={132}
+            height={132}
+            className="hidden shrink-0 rounded-lg md:block"
+          />
         </div>
 
         <Link
