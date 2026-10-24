@@ -16,15 +16,26 @@ export function findShippingOption(options: ShippingOption[], serviceId: unknown
  * Envio chegam até ~10 opções; uma lista longa confunde e faz desistir. */
 export const MAX_SHIPPING_OPTIONS = 3;
 
-/** As opções que o carrinho mostra: a mais barata, a mais rápida (no empate, a mais barata) e as
- * próximas mais baratas até completar o máximo. Volta em ordem de preço (a 1ª já vem marcada). */
+/** As opções que o carrinho mostra: a mais barata, a mais rápida e, no meio, a mais barata entre as
+ * que valem a pena — nunca uma que seja ao mesmo tempo mais cara E mais lenta que outra (ex.: no
+ * Acre, Jadlog R$ 23,39 em 16 dias perde pra Loggi R$ 21,51 em 11; entra o PAC, R$ 27,59 em 9).
+ * Se faltar opção assim, completa com as próximas mais baratas. Volta em ordem de preço. */
 export function pickShippingOptions(options: ShippingOption[], max = MAX_SHIPPING_OPTIONS): ShippingOption[] {
   if (options.length <= max) return [...options].sort((a, b) => a.priceCents - b.priceCents);
   const byPrice = [...options].sort((a, b) => a.priceCents - b.priceCents || a.deliveryDays - b.deliveryDays);
   const fastest = [...options].sort((a, b) => a.deliveryDays - b.deliveryDays || a.priceCents - b.priceCents)[0];
+  // "vale a pena": nenhuma outra opção é mais barata (ou igual) e mais rápida (ou igual) ao mesmo tempo
+  const worthIt = (o: ShippingOption) =>
+    !options.some(
+      (x) => x !== o && x.priceCents <= o.priceCents && x.deliveryDays <= o.deliveryDays && (x.priceCents < o.priceCents || x.deliveryDays < o.deliveryDays),
+    );
   const picked = new Map<string, ShippingOption>();
   picked.set(byPrice[0].serviceId, byPrice[0]);
   picked.set(fastest.serviceId, fastest);
+  for (const o of byPrice) {
+    if (picked.size >= max) break;
+    if (worthIt(o)) picked.set(o.serviceId, o);
+  }
   for (const o of byPrice) {
     if (picked.size >= max) break;
     picked.set(o.serviceId, o);
