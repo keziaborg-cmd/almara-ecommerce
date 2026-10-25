@@ -1,4 +1,4 @@
-import { marked } from "marked";
+import { isSafeUrl, renderPostMarkdown } from "@/lib/blog/render-markdown";
 // O client "server" (lib/supabase/server.ts) usa cookies() de next/headers, que
 // não está disponível em generateStaticParams (roda em build time, sem
 // requisição HTTP) — ver erro do Next ao tentar. Blog é leitura pública sem
@@ -50,7 +50,9 @@ function toPost(row: BlogPostRow): BlogPost | null {
   if (!isBlogCategory(row.category)) return null;
 
   const sources: PostSource[] = Array.isArray(row.sources)
-    ? row.sources.map((s) => ({ title: String((s as PostSource)?.title ?? ""), url: String((s as PostSource)?.url ?? "") }))
+    ? row.sources
+        .map((s) => ({ title: String((s as PostSource)?.title ?? ""), url: String((s as PostSource)?.url ?? "") }))
+        .filter((s) => /^https?:/i.test(s.url.trim()) && isSafeUrl(s.url))
     : [];
 
   return {
@@ -63,7 +65,7 @@ function toPost(row: BlogPostRow): BlogPost | null {
     status: row.status === "publicado" ? "publicado" : "revisao",
     risk: row.risk === "alto" ? "alto" : "baixo",
     sources,
-    contentHtml: marked.parse(row.body_markdown, { async: false }) as string,
+    contentHtml: renderPostMarkdown(row.body_markdown),
     readingTimeMinutes: Math.max(1, Math.ceil(wordCount(row.body_markdown) / 200)),
   };
 }
