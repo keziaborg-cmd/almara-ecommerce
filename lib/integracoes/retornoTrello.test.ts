@@ -23,10 +23,10 @@ describe("volta do Trello pro app", () => {
   });
 
   it("o script limpa a URL, abre o app e só repassa token com formato válido", () => {
-    const rodar = (hash: string) => {
+    const rodar = (hash: string, search = "") => {
       const chamadas: string[] = [];
       const a = { href: "", hidden: true };
-      const loc = { hash, pathname: "/integracoes/trello/retorno", replace: (u: string) => chamadas.push(`replace:${u}`) };
+      const loc = { hash, search, pathname: "/integracoes/trello/retorno", replace: (u: string) => chamadas.push(`replace:${u}`) };
       const hist = { replaceState: (_s: unknown, _t: string, u: string) => chamadas.push(`limpa:${u}`) };
       new Function("location", "history", "document", "URLSearchParams", SCRIPT_RETORNO)(loc, hist, { getElementById: () => a }, URLSearchParams);
       return { chamadas, a };
@@ -37,5 +37,21 @@ describe("volta do Trello pro app", () => {
     expect(ok.a.hidden).toBe(false);
     expect(rodar("#token=<img onerror=x>").chamadas[1]).toBe(`replace:${DESTINO_APP}#error=sem_token`);
     expect(rodar("#token=&error=Token request rejected").chamadas[1]).toBe(`replace:${DESTINO_APP}#error=Token%20request%20rejected`);
+  });
+
+  it("repassa o state do app junto do token, e recusa state fora do formato", () => {
+    const rodar = (hash: string, search: string) => {
+      const chamadas: string[] = [];
+      const loc = { hash, search, pathname: "/integracoes/trello/retorno", replace: (u: string) => chamadas.push(u) };
+      const hist = { replaceState: (_s: unknown, _t: string, u: string) => chamadas.push(`limpa:${u}`) };
+      new Function("location", "history", "document", "URLSearchParams", SCRIPT_RETORNO)(loc, hist, { getElementById: () => ({ href: "", hidden: true }) }, URLSearchParams);
+      return chamadas;
+    };
+    const tok = "b".repeat(64);
+    const state = "Ab3_-".repeat(9).slice(0, 43);
+    expect(rodar(`#token=${tok}`, `?state=${state}`)).toEqual(["limpa:/integracoes/trello/retorno", `${DESTINO_APP}#token=${tok}&state=${state}`]);
+    expect(rodar(`#token=${tok}`, "?state=curto")[1]).toBe(`${DESTINO_APP}#error=state_invalido`);
+    expect(rodar(`#token=${tok}`, `?state=${"a".repeat(40)}%26token%3Dx`)[1]).toBe(`${DESTINO_APP}#error=state_invalido`);
+    expect(rodar("#token=<x>", `?state=${state}`)[1]).toBe(`${DESTINO_APP}#error=sem_token`);
   });
 });
