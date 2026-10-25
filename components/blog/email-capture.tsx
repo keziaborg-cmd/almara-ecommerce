@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { createClient } from "@/lib/supabase/client";
-import { track } from "@/lib/crm/tracker";
 
 export function EmailCapture({ sourceSlug }: { sourceSlug: string }) {
   const [email, setEmail] = useState("");
@@ -12,16 +10,23 @@ export function EmailCapture({ sourceSlug }: { sourceSlug: string }) {
     e.preventDefault();
     if (!email) return;
     setStatus("sending");
-    const supabase = createClient();
-    const { error } = await supabase.from("blog_subscribers").insert({ email, source_slug: sourceSlug });
-    if (!error) track("newsletter_subscribed", { source: "blog", slug: sourceSlug }, { email });
-    setStatus(error ? "error" : "done");
+    // Mesma função do pop-up: inscreve como pendente e manda o link de confirmação por e-mail.
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/newsletter-subscribe`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "" },
+        body: JSON.stringify({ email, source: sourceSlug }),
+      });
+      setStatus(res.ok ? "done" : "error");
+    } catch {
+      setStatus("error");
+    }
   }
 
   if (status === "done") {
     return (
       <div className="rounded-card-conteudo border border-borda-clara bg-sucesso-bg p-6 text-center text-sm font-semibold text-sucesso-fg">
-        Recebido! Avisamos por e-mail quando sair conteúdo novo.
+        Quase lá! Mandamos um link pro seu e-mail: confirme pra receber os próximos artigos.
       </div>
     );
   }

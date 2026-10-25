@@ -79,28 +79,35 @@ export async function sendOrderConfirmationEmail(data: OrderConfirmationEmailDat
   }
 }
 
-// Descadastro da newsletter (a política promete link em toda comunicação promocional). O link leva
-// à página com o token do inscrito; o cabeçalho List-Unsubscribe-Post faz o botão "Cancelar
-// inscrição" do Gmail/Apple descadastrar com um clique (RFC 8058, POST /api/descadastro).
-const UNSUBSCRIBE_MAILTO = "mailto:ola@almara.com.br?subject=Cancelar%20inscri%C3%A7%C3%A3o%20na%20newsletter";
 const SITE = "https://almara.com.br";
 
-/** E-mail do pop-up da newsletter: o cupom de primeira compra. */
-export async function sendWelcomeCouponEmail(to: string, code: string, percentOff: number, unsubscribeToken: string): Promise<void> {
-  const pageUrl = `${SITE}/descadastro?n=${encodeURIComponent(unsubscribeToken)}`;
-  const oneClickUrl = `${SITE}/api/descadastro?n=${encodeURIComponent(unsubscribeToken)}`;
+/**
+ * E-mail de confirmação da newsletter (double opt-in). O link abre /newsletter/confirmar, onde a
+ * pessoa clica pra confirmar (POST — scanners de link abrem o GET sozinhos). Quando é a primeira
+ * inscrição de quem nunca comprou, leva também o cupom de primeira compra.
+ */
+export async function sendNewsletterConfirmEmail(
+  to: string,
+  confirmToken: string,
+  coupon: { code: string; percentOff: number } | null,
+): Promise<void> {
+  const confirmUrl = `${SITE}/newsletter/confirmar?t=${encodeURIComponent(confirmToken)}`;
+  const couponBlock = coupon
+    ? `
+      <p>E o seu cupom de <strong>${coupon.percentOff}% nos chás</strong> na primeira compra (já vale, mesmo antes de confirmar):</p>
+      <p style="margin:20px 0;text-align:center">
+        <span style="display:inline-block;padding:12px 22px;border:2px dashed #568833;border-radius:10px;font-size:22px;font-weight:bold;letter-spacing:2px;color:#013f24">${coupon.code}</span>
+      </p>
+      <p>É só digitar o código no carrinho. Ele vale para a primeira compra feita com este e-mail, sobre o valor dos chás (o frete não entra).</p>`
+    : "";
   const html = `
     <div style="font-family:sans-serif;color:#1a1a1a;max-width:480px;margin:0 auto">
-      <h2 style="color:#013f24">Que bom ter você por aqui</h2>
-      <p>Obrigado por se inscrever na newsletter da Almara. Como prometido, aqui está o seu cupom de <strong>${percentOff}% nos chás</strong> na primeira compra:</p>
-      <p style="margin:20px 0;text-align:center">
-        <span style="display:inline-block;padding:12px 22px;border:2px dashed #568833;border-radius:10px;font-size:22px;font-weight:bold;letter-spacing:2px;color:#013f24">${code}</span>
-      </p>
-      <p>É só digitar o código no carrinho. Ele vale para a primeira compra feita com este e-mail, sobre o valor dos chás (o frete não entra).</p>
+      <h2 style="color:#013f24">Confirme sua inscrição</h2>
+      <p>Recebemos um pedido para inscrever este e-mail na newsletter da Almara. Para começar a receber nossos conteúdos, confirme:</p>
       <p style="margin:24px 0;text-align:center">
-        <a href="https://almara.com.br/produtos" style="display:inline-block;padding:12px 24px;border-radius:999px;background:#013f24;color:#fffdf8;text-decoration:none;font-weight:bold">Ver os chás</a>
-      </p>
-      <p style="margin-top:24px;color:#666;font-size:13px">Você recebeu este e-mail porque se inscreveu na newsletter em almara.com.br. <a href="${pageUrl}" style="color:#666">Cancelar inscrição</a>.</p>
+        <a href="${confirmUrl}" style="display:inline-block;padding:12px 24px;border-radius:999px;background:#013f24;color:#fffdf8;text-decoration:none;font-weight:bold">Confirmar inscrição</a>
+      </p>${couponBlock}
+      <p style="margin-top:24px;color:#666;font-size:13px">Se não foi você, é só ignorar este e-mail: sem a confirmação, você não entra na lista.</p>
     </div>
   `;
   const res = await fetch(RESEND_API, {
@@ -109,12 +116,8 @@ export async function sendWelcomeCouponEmail(to: string, code: string, percentOf
     body: JSON.stringify({
       from: FROM_ADDRESS,
       to,
-      subject: `Seu cupom de ${percentOff}% na primeira compra — Almara`,
+      subject: coupon ? `Confirme sua inscrição (e seu cupom de ${coupon.percentOff}%) — Almara` : "Confirme sua inscrição na newsletter — Almara",
       html,
-      headers: {
-        "List-Unsubscribe": `<${oneClickUrl}>, <${UNSUBSCRIBE_MAILTO}>`,
-        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-      },
     }),
   });
   if (!res.ok) throw new Error(`Resend email send failed: ${res.status} ${await res.text()}`);
