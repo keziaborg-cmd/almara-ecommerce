@@ -2,6 +2,7 @@ import { makeResponders } from "../_shared/cors.ts";
 import { createAdminClient } from "../_shared/supabase-admin.ts";
 import { createPayment, paymentIdempotencyKey } from "../_shared/mercadopago.ts";
 import { applyPaymentUpdate } from "../_shared/payment-events.ts";
+import { couponBlockReason } from "../_shared/coupon-recheck.ts";
 import { crmTrack, sanitizeTracking } from "../_shared/crm.ts";
 
 interface RequestBody {
@@ -27,7 +28,7 @@ Deno.serve(async (req) => {
 
     const { data: order, error: orderError } = await supabase
       .from("shop_orders")
-      .select("id, order_number, status, customer_id, nome, email, telefone, total_cents")
+      .select("id, order_number, status, customer_id, nome, email, telefone, total_cents, coupon_code, shop_order_items(subtotal_cents)")
       .eq("order_number", orderNumber)
       .eq("access_token", accessToken)
       .maybeSingle();
@@ -37,6 +38,12 @@ Deno.serve(async (req) => {
 
     if (order.status === "approved") {
       return json({ status: "approved" });
+    }
+
+    const rawSubtotalCents = order.shop_order_items.reduce((sum, i) => sum + i.subtotal_cents, 0);
+    const couponBlocked = await couponBlockReason(supabase, order, rawSubtotalCents);
+    if (couponBlocked) {
+      return json({ code: "coupon_unavailable", message: couponBlocked }, 409);
     }
 
     const { count: previousAttempts } = await supabase
