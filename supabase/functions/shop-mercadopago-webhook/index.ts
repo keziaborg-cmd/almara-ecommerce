@@ -17,7 +17,9 @@ Deno.serve(async (req) => {
       paymentId = paymentId ?? body?.data?.id;
     }
 
-    if (type !== "payment" || !paymentId) {
+    // Id de pagamento do Mercado Pago é numérico; qualquer outra coisa (barra, "?", "..")
+    // mudaria o caminho consultado na API com o token da loja.
+    if (type !== "payment" || !paymentId || !/^\d{1,20}$/.test(String(paymentId))) {
       return new Response("ok", { status: 200 });
     }
 

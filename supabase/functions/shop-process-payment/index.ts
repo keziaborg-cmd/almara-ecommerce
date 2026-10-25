@@ -1,6 +1,6 @@
 import { makeResponders } from "../_shared/cors.ts";
 import { createAdminClient } from "../_shared/supabase-admin.ts";
-import { createPayment } from "../_shared/mercadopago.ts";
+import { createPayment, paymentIdempotencyKey } from "../_shared/mercadopago.ts";
 import { applyPaymentUpdate } from "../_shared/payment-events.ts";
 import { crmTrack, sanitizeTracking } from "../_shared/crm.ts";
 
@@ -66,9 +66,10 @@ Deno.serve(async (req) => {
     try {
       payment = await createPayment({
         formData,
+        amountCents: order.total_cents,
         externalReference: order.order_number,
         notificationUrl: `${functionsBaseUrl}/shop-mercadopago-webhook`,
-        idempotencyKey: `${order.id}:${Date.now()}`,
+        idempotencyKey: await paymentIdempotencyKey(order.id, attempt, formData),
       });
     } catch (paymentErr) {
       await crmTrack(supabase, {
