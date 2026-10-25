@@ -169,3 +169,26 @@ describe("applyPaymentUpdate", () => {
     expect(db.order.status).toBe("cancelled");
   });
 });
+
+describe("consentimento do checkout", () => {
+  it("só vai pro CRM quando o pagamento é aprovado com o valor certo", async () => {
+    const order = { ...baseOrder, requested_consents: { channels: ["email", "whatsapp"], textVersion: "checkout-v1" } };
+    const pending = fakeDb(order);
+    await applyPaymentUpdate(pending.client, payment({ status: "pending", status_detail: "pending_waiting_transfer" }));
+    expect(pending.events).not.toContain("consent_granted");
+
+    const mismatch = fakeDb(order);
+    await applyPaymentUpdate(mismatch.client, payment({ transaction_amount: 1 }));
+    expect(mismatch.events).not.toContain("consent_granted");
+
+    const approved = fakeDb(order);
+    await applyPaymentUpdate(approved.client, payment({}));
+    expect(approved.events.filter((e) => e === "consent_granted")).toHaveLength(2);
+  });
+
+  it("pedido sem nada marcado não grava consentimento", async () => {
+    const db = fakeDb({ ...baseOrder, requested_consents: null });
+    await applyPaymentUpdate(db.client, payment({}));
+    expect(db.events).not.toContain("consent_granted");
+  });
+});

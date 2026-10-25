@@ -1080,6 +1080,7 @@ export type Database = {
           nome: string
           numero: string
           order_number: string
+          requested_consents: Json | null
           rua: string
           shipping_fee_cents: number
           shipping_method: string
@@ -1112,6 +1113,7 @@ export type Database = {
           nome: string
           numero: string
           order_number: string
+          requested_consents?: Json | null
           rua: string
           shipping_fee_cents?: number
           shipping_method: string
@@ -1144,6 +1146,7 @@ export type Database = {
           nome?: string
           numero?: string
           order_number?: string
+          requested_consents?: Json | null
           rua?: string
           shipping_fee_cents?: number
           shipping_method?: string

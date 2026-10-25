@@ -45,3 +45,29 @@ export function sanitizeTracking(raw: unknown): CrmTracking {
   const ok = (v: unknown) => (typeof v === "string" && /^[A-Za-z0-9_-]{8,64}$/.test(v) ? v : undefined);
   return { anonymousId: ok(t.anonymousId), sessionId: ok(t.sessionId) };
 }
+
+const CONSENT_CHANNELS = ["email", "whatsapp", "sms"] as const;
+export type ConsentChannel = (typeof CONSENT_CHANNELS)[number];
+export interface RequestedConsents {
+  channels: ConsentChannel[];
+  textVersion: string | null;
+}
+
+// Consentimentos marcados no checkout (corpo vindo do navegador): guardados no pedido e só
+// enviados ao CRM quando o pagamento é aprovado. null = nenhum canal marcado.
+export function requestedConsentsFrom(raw: unknown): RequestedConsents | null {
+  const c = (raw ?? {}) as Record<string, unknown>;
+  const channels = CONSENT_CHANNELS.filter((ch) => c[ch] === true);
+  if (channels.length === 0) return null;
+  return { channels, textVersion: typeof c.textVersion === "string" ? c.textVersion.slice(0, 40) : null };
+}
+
+// Lê o que foi guardado no pedido (jsonb), aceitando só canais conhecidos.
+export function parseRequestedConsents(raw: unknown): RequestedConsents | null {
+  const r = (raw ?? {}) as { channels?: unknown; textVersion?: unknown };
+  const channels = Array.isArray(r.channels)
+    ? CONSENT_CHANNELS.filter((ch) => (r.channels as unknown[]).includes(ch))
+    : [];
+  if (channels.length === 0) return null;
+  return { channels, textVersion: typeof r.textVersion === "string" ? r.textVersion.slice(0, 40) : null };
+}
