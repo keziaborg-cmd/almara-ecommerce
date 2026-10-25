@@ -3,7 +3,7 @@
  *
  * O Trello devolve o token no fragmento da URL (#token=…), que nunca chega ao servidor. Esta página
  * lê o fragmento no navegador, limpa a URL (history.replaceState, pra o token não ficar no histórico)
- * e abre o app em almara://integracoes/trello#token=…; o app manda o token direto pra função do
+ * e abre o app em almara://integracoes/trello#token=…&state=…; o app manda o token direto pra função do
  * Supabase, que valida, cifra e guarda.
  *
  * Por isso é um route handler e não uma page: não passa pelo layout do site, então não carrega
@@ -13,7 +13,11 @@ import { createHash } from "node:crypto";
 
 export const DESTINO_APP = "almara://integracoes/trello";
 
-export const SCRIPT_RETORNO = `(function(){var p=new URLSearchParams(location.hash.slice(1));history.replaceState(null,"",location.pathname);var t=p.get("token");var d="${DESTINO_APP}#"+(t&&/^[A-Za-z0-9]{32,128}$/.test(t)?"token="+t:"error="+encodeURIComponent(p.get("error")||"sem_token"));var a=document.getElementById("voltar");a.href=d;a.hidden=false;location.replace(d);})();`;
+// O app manda um `state` aleatório na return_url (?state=…) e só aceita o token se ele voltar igual
+// (contrato combinado com o app em 2026-10-25). A página repassa o `state` no fragmento junto do
+// token; `state` presente mas fora do formato = erro, nada é repassado. Sem `state` (builds antigos
+// do app) o token segue como antes — o app novo recusa a volta sem `state`.
+export const SCRIPT_RETORNO = `(function(){var p=new URLSearchParams(location.hash.slice(1));var q=new URLSearchParams(location.search);history.replaceState(null,"",location.pathname);var t=p.get("token");var s=q.get("state");var tok=t&&/^[A-Za-z0-9]{32,128}$/.test(t);var st=s===null||/^[A-Za-z0-9_-]{32,128}$/.test(s);var d="${DESTINO_APP}#"+(tok&&st?"token="+t+(s?"&state="+s:""):"error="+encodeURIComponent(tok?"state_invalido":(p.get("error")||"sem_token")));var a=document.getElementById("voltar");a.href=d;a.hidden=false;location.replace(d);})();`;
 
 const ESTILO = `body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0c3123;color:#fffdf8;font-family:system-ui,-apple-system,sans-serif;text-align:center;padding:24px;box-sizing:border-box}main{max-width:360px}h1{font-weight:400;font-size:24px;margin:0 0 10px}p{color:#d5e3c8;line-height:1.5;margin:0 0 22px}a{display:inline-block;padding:14px 26px;border-radius:28px;background:#fbe7a8;color:#3d2f0c;text-decoration:none}`;
 
