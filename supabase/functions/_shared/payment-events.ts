@@ -47,6 +47,11 @@ export function paymentEventName(status: string, statusDetail: string | null | u
   }
 }
 
+export function paymentMatchesOrder(payment: MpPayment, totalCents: number): boolean {
+  if (payment.currency_id !== "BRL" || typeof payment.transaction_amount !== "number") return false;
+  return Math.round(payment.transaction_amount * 100) === totalCents;
+}
+
 // Único caminho pra aplicar o estado de um pagamento do Mercado Pago a um pedido — usado tanto
 // na resposta síncrona (shop-process-payment) quanto no webhook, pra os dois nunca divergirem.
 // Devolve o status do pedido depois da atualização, ou null se o pedido não existe.
@@ -83,25 +88,49 @@ export async function applyPaymentUpdate(
   );
   if (attemptError) console.error("shop_payment_attempts upsert failed", attemptError.message);
 
+  // Só aprova se o Mercado Pago cobrou exatamente o total do pedido, em reais. Um pagamento
+  // "approved" com outro valor/moeda não confirma nada: o pedido fica pendente com
+  // mp_status_detail = amount_mismatch pra alguém conferir (e estornar) no painel.
+  const amountMismatch = payment.status === "approved" && !paymentMatchesOrder(payment, order.total_cents);
+  if (amountMismatch) {
+    console.error("approved payment does not match order total", {
+      order_number: order.order_number,
+      mp_payment_id: mpPaymentId,
+      amount_cents: amountCents,
+      currency_id: payment.currency_id ?? null,
+      total_cents: order.total_cents,
+    });
+  }
+  let orderStatus: OrderStatus = amountMismatch ? "pending" : mapMpStatusToOrderStatus(payment.status);
+
   // Pedido aprovado só muda por causa do próprio pagamento que aprovou (estorno/chargeback) —
   // uma notificação atrasada de outra tentativa (ex.: Pix antigo expirando depois que o cartão
-  // aprovou) não pode rebaixar o pedido.
-  let orderStatus = mapMpStatusToOrderStatus(payment.status);
-  if (order.status === "approved" && order.mp_payment_id !== mpPaymentId) {
+  // aprovou) não pode rebaixar o pedido. A condição vai no próprio UPDATE pra valer mesmo com
+  // webhook e resposta síncrona chegando ao mesmo tempo.
+  const { data: updated, error: updateError } = await supabase
+    .from("shop_orders")
+    .update({
+      mp_payment_id: mpPaymentId,
+      mp_payment_status: payment.status,
+      mp_status_detail: amountMismatch ? "amount_mismatch" : (payment.status_detail ?? null),
+      status: orderStatus,
+      updated_at: now,
+    })
+    .eq("id", order.id)
+    .or(`status.neq.approved,mp_payment_id.eq.${mpPaymentId}`)
+    .select("id");
+  if (updateError) throw updateError;
+  if ((updated?.length ?? 0) === 0) {
     orderStatus = "approved";
-  } else {
-    const { error: updateError } = await supabase
-      .from("shop_orders")
-      .update({
+    if (payment.status === "approved") {
+      console.error("second approved payment for an already approved order — refund needed", {
+        order_number: order.order_number,
         mp_payment_id: mpPaymentId,
-        mp_payment_status: payment.status,
-        mp_status_detail: payment.status_detail ?? null,
-        status: orderStatus,
-        updated_at: now,
-      })
-      .eq("id", order.id);
-    if (updateError) throw updateError;
+      });
+    }
   }
+
+  if (amountMismatch) return orderStatus;
 
   const who = {
     email: order.email,

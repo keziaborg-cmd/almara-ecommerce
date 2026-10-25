@@ -56,6 +56,7 @@ export interface MpPayment {
   payment_method_id?: string;
   payment_type_id?: string;
   transaction_amount?: number;
+  currency_id?: string;
   // Presentes só em pagamentos Pix — a API já devolve isso pronto na criação
   // do pagamento, sem precisar de chamada extra.
   date_of_expiration?: string;
@@ -64,8 +65,38 @@ export interface MpPayment {
   };
 }
 
+// O formData vem do navegador (Payment Brick): dele só aproveitamos os dados do meio de
+// pagamento (token do cartão, parcelas, emissor, pagador). Valor, referência e URL de
+// notificação são sempre do servidor — senão o comprador escolheria quanto paga.
+export function buildPaymentBody(
+  formData: Record<string, unknown>,
+  params: { amountCents: number; externalReference: string; notificationUrl: string },
+): Record<string, unknown> {
+  return {
+    ...formData,
+    transaction_amount: params.amountCents / 100,
+    external_reference: params.externalReference,
+    notification_url: params.notificationUrl,
+  };
+}
+
+// Chave estável pro mesmo envio: clique duplo ou reenvio com o mesmo token de cartão (o Brick
+// gera um token novo a cada envio) cai no mesmo pagamento do Mercado Pago em vez de cobrar
+// duas vezes. Nova tentativa (outro token, ou depois de uma tentativa registrada) = chave nova.
+export async function paymentIdempotencyKey(
+  orderId: string,
+  attempt: number,
+  formData: Record<string, unknown>,
+): Promise<string> {
+  const source = [formData.payment_method_id, formData.token].map((v) => (typeof v === "string" ? v : "")).join(":");
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(source));
+  const hash = Array.from(new Uint8Array(digest).slice(0, 8), (b) => b.toString(16).padStart(2, "0")).join("");
+  return `${orderId}:${attempt}:${hash}`;
+}
+
 export async function createPayment(params: {
   formData: Record<string, unknown>;
+  amountCents: number;
   externalReference: string;
   notificationUrl: string;
   idempotencyKey: string;
@@ -77,11 +108,7 @@ export async function createPayment(params: {
       "Content-Type": "application/json",
       "X-Idempotency-Key": params.idempotencyKey,
     },
-    body: JSON.stringify({
-      ...params.formData,
-      external_reference: params.externalReference,
-      notification_url: params.notificationUrl,
-    }),
+    body: JSON.stringify(buildPaymentBody(params.formData, params)),
   });
 
   const data = await res.json();
