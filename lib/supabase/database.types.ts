@@ -1603,6 +1603,7 @@ export type Database = {
           p_properties?: Json
           p_session_id?: string
           p_shop_customer_id?: string
+          p_verified?: boolean
         }
         Returns: number
       }
