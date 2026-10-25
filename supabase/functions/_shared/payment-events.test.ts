@@ -69,6 +69,8 @@ const baseOrder: Row = {
   email: "compradora@example.test",
   telefone: "11900000000",
   total_cents: 15000,
+  subtotal_cents: 15000,
+  shipping_fee_cents: 0,
   coupon_code: null,
   rua: "Rua A",
   numero: "1",
