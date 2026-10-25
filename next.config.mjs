@@ -55,18 +55,19 @@ const SUPABASE_ORIGIN = (() => {
  */
 export const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://connect.facebook.net https://sdk.mercadopago.com https://http2.mlstatic.com",
+  "script-src 'self' 'unsafe-inline' https://*.googletagmanager.com https://connect.facebook.net https://sdk.mercadopago.com https://http2.mlstatic.com",
   "style-src 'self' 'unsafe-inline' https://http2.mlstatic.com",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data: https://http2.mlstatic.com",
   "media-src 'self' blob:",
-  `connect-src 'self' ${SUPABASE_ORIGIN} https://viacep.com.br https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com https://connect.facebook.net https://www.facebook.com https://api.mercadopago.com https://*.mercadopago.com https://*.mercadolibre.com https://*.mercadolivre.com https://http2.mlstatic.com`,
+  `connect-src 'self' ${SUPABASE_ORIGIN} https://viacep.com.br https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://connect.facebook.net https://www.facebook.com https://api.mercadopago.com https://*.mercadopago.com https://*.mercadolibre.com https://*.mercadolivre.com https://http2.mlstatic.com`,
   "frame-src https://*.mercadopago.com https://*.mercadolibre.com https://*.mercadolivre.com https://www.mercadolivre.com.br https://www.googletagmanager.com",
   "worker-src 'self' blob:",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
   "frame-ancestors 'self'",
+  "report-uri /api/csp-report",
 ].join("; ");
 
 export const SECURITY_HEADERS = [
