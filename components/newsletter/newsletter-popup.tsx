@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useConsentStore } from "@/lib/consent/consent";
-import { getTrackingIds, track } from "@/lib/crm/tracker";
+import { track } from "@/lib/crm/tracker";
 
 // Pop-up da newsletter com o cupom de primeira compra (função newsletter-subscribe).
 //   - aparece depois de 20 s no site, ou antes se o mouse for sair da página (só em computador);
@@ -111,7 +111,7 @@ export function NewsletterPopup() {
       const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/newsletter-subscribe`, {
         method: "POST",
         headers: { "Content-Type": "application/json", apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "" },
-        body: JSON.stringify({ email: value, textVersion: CONSENT_TEXT_VERSION, tracking: getTrackingIds() }),
+        body: JSON.stringify({ email: value, textVersion: CONSENT_TEXT_VERSION, source: "popup" }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.subscribed) {
@@ -219,7 +219,7 @@ export function NewsletterPopup() {
           ) : (
             <div role="status">
               <p id="newsletter-popup-title" className="pr-8 font-display text-3xl leading-tight text-verde-escuro">
-                Pronto, você está na lista!
+                Quase lá!
               </p>
               {coupon ? (
                 <>
@@ -239,7 +239,7 @@ export function NewsletterPopup() {
                     </button>
                   </div>
                   <p className="mt-3 text-xs text-tinta/60">
-                    Também enviamos o código para o seu e-mail. Vale na primeira compra feita com este e-mail.
+                    Mandamos um link pro seu e-mail: confirme pra entrar na lista. O cupom já vale, na primeira compra feita com este e-mail.
                   </p>
                   <Link
                     href="/produtos"
@@ -250,7 +250,7 @@ export function NewsletterPopup() {
                   </Link>
                 </>
               ) : (
-                <p className="mt-2 text-sm leading-relaxed text-tinta/75">Avisamos por e-mail quando tiver novidade.</p>
+                <p className="mt-2 text-sm leading-relaxed text-tinta/75">Mandamos um link pro seu e-mail: confirme pra entrar na lista.</p>
               )}
             </div>
           )}

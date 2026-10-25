@@ -97,6 +97,10 @@ export type Database = {
       }
       blog_subscribers: {
         Row: {
+          confirm_sent_at: string | null
+          confirm_token: string
+          confirmed_at: string | null
+          consent_text_version: string | null
           created_at: string
           email: string
           id: string
@@ -105,6 +109,10 @@ export type Database = {
           unsubscribed_at: string | null
         }
         Insert: {
+          confirm_sent_at?: string | null
+          confirm_token?: string
+          confirmed_at?: string | null
+          consent_text_version?: string | null
           created_at?: string
           email: string
           id?: string
@@ -113,6 +121,10 @@ export type Database = {
           unsubscribed_at?: string | null
         }
         Update: {
+          confirm_sent_at?: string | null
+          confirm_token?: string
+          confirmed_at?: string | null
+          consent_text_version?: string | null
           created_at?: string
           email?: string
           id?: string
@@ -1594,6 +1606,7 @@ export type Database = {
       crm_track_web: { Args: { p_events: Json }; Returns: number }
       crm_unsubscribe: { Args: { p_message_id: string }; Returns: string }
       newsletter_unsubscribe: { Args: { p_token: string }; Returns: string | null }
+      newsletter_confirm: { Args: { p_token: string }; Returns: boolean }
       ferramenta_entrar: { Args: { p_ferramenta: string }; Returns: string }
       ferramenta_meu_ranking: {
         Args: { p_ferramenta: string }

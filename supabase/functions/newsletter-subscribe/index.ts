@@ -1,19 +1,22 @@
-// Pop-up da newsletter: inscreve o e-mail, registra o consentimento de e-mail de marketing no CRM e
-// entrega o cupom de primeira compra (na resposta, pra mostrar na tela, e por e-mail). Pública
-// (visitante sem login): deployar com --no-verify-jwt.
+// Newsletter (pop-up e captura do blog): inscreve o e-mail como PENDENTE, manda o link de
+// confirmação e entrega o cupom de primeira compra na tela. O consentimento de e-mail de marketing
+// só vai pro CRM quando a pessoa confirma (newsletter_confirm, página /newsletter/confirmar) — assim
+// ninguém inscreve nem reativa o e-mail de outra pessoa. Pública (visitante sem login): deployar
+// com --no-verify-jwt.
 //
-// Privacidade: o código da campanha volta SEMPRE igual na tela (é público; quem confere a primeira
-// compra é o checkout), então a resposta não revela se um e-mail já é cliente ou já era inscrito.
-// O e-mail com o cupom só sai na PRIMEIRA inscrição de quem nunca comprou — assim a função também
-// não vira um jeito de mandar e-mail repetido pra qualquer pessoa.
+// Privacidade: a resposta é sempre igual (o código da campanha é público; quem confere a primeira
+// compra é o checkout), então não revela se um e-mail já é cliente ou já era inscrito. O link de
+// confirmação sai no máximo uma vez por hora por e-mail, e o cupom vai no e-mail só na primeira
+// inscrição de quem nunca comprou.
 import { makeResponders } from "../_shared/cors.ts";
 import { createAdminClient } from "../_shared/supabase-admin.ts";
-import { crmTrack, sanitizeTracking } from "../_shared/crm.ts";
 import { ruleFromCheck } from "../_shared/coupons.ts";
-import { sendWelcomeCouponEmail } from "../_shared/email.ts";
+import { sendNewsletterConfirmEmail } from "../_shared/email.ts";
 
 const WELCOME_COUPON = "PRIMEIRA10";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const SOURCE_RE = /^[a-z0-9-]{1,120}$/;
+const RESEND_CONFIRM_MS = 60 * 60 * 1000;
 
 Deno.serve(async (req) => {
   const { json, preflight } = makeResponders(req);
@@ -22,7 +25,7 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ code: "method_not_allowed", message: "Método não permitido." }, 405);
 
   try {
-    let body: { email?: unknown; textVersion?: unknown; tracking?: unknown };
+    let body: { email?: unknown; source?: unknown; textVersion?: unknown };
     try {
       body = await req.json();
     } catch {
@@ -32,53 +35,60 @@ Deno.serve(async (req) => {
     if (!email || email.length > 254 || !EMAIL_RE.test(email)) {
       return json({ code: "invalid_email", message: "Confira o e-mail digitado." }, 400);
     }
-    const textVersion = typeof body?.textVersion === "string" ? body.textVersion.slice(0, 40) : null;
-    const tracking = sanitizeTracking(body?.tracking);
     const supabase = createAdminClient();
 
-    // Inscrição (a mesma lista do blog). Já inscrito = segue, sem erro.
-    const { data: inserted, error: insertError } = await supabase
-      .from("blog_subscribers")
-      .upsert({ email, source_slug: "popup" }, { onConflict: "email", ignoreDuplicates: true })
-      .select("id");
-    if (insertError) throw insertError;
-    const isNew = (inserted ?? []).length > 0;
-    // quem tinha saído e se inscreveu de novo volta pra lista (o newsletter_subscribed abaixo
-    // devolve o consentimento no CRM); o token do link de descadastro vem junto
-    const { data: sub, error: subError } = await supabase
-      .from("blog_subscribers")
-      .update({ unsubscribed_at: null })
-      .eq("email", email)
-      .select("unsubscribe_token")
-      .maybeSingle();
-    if (subError) throw subError;
+    const textVersion = typeof body?.textVersion === "string" ? body.textVersion.slice(0, 40) : null;
+    const source = typeof body?.source === "string" && SOURCE_RE.test(body.source) ? body.source : "popup";
 
-    // newsletter_subscribed já grava o consentimento de e-mail no CRM (crm.consents), com a versão do texto.
-    await crmTrack(supabase, {
-      email,
-      anonymousId: tracking.anonymousId,
-      sessionId: tracking.sessionId,
-      name: "newsletter_subscribed",
-      properties: { source: "newsletter_popup", text_version: textVersion },
-      idempotencyKey: `newsletter:${email}:popup`,
-    });
+    // A inscrição nasce pendente: o consentimento no CRM só é gravado quando a pessoa confirma pelo
+    // link do e-mail (newsletter_confirm). Quem já está confirmado e ativo não recebe nada de novo;
+    // quem saiu ou não confirmou recebe o link de novo, no máximo uma vez por hora.
+    const { data: existing, error: findError } = await supabase
+      .from("blog_subscribers")
+      .select("id, confirmed_at, unsubscribed_at, confirm_sent_at, confirm_token")
+      .eq("email", email)
+      .maybeSingle();
+    if (findError) throw findError;
+
+    let sub = existing;
+    let isNew = false;
+    if (!sub) {
+      const { data: inserted, error: insertError } = await supabase
+        .from("blog_subscribers")
+        .upsert({ email, source_slug: source, consent_text_version: textVersion }, { onConflict: "email", ignoreDuplicates: true })
+        .select("id, confirmed_at, unsubscribed_at, confirm_sent_at, confirm_token");
+      if (insertError) throw insertError;
+      sub = inserted?.[0] ?? null;
+      isNew = sub != null;
+    }
+    const needsConfirmation = sub != null && (!sub.confirmed_at || sub.unsubscribed_at != null);
+    const recentlySent = sub?.confirm_sent_at != null && Date.now() - Date.parse(sub.confirm_sent_at) < RESEND_CONFIRM_MS;
 
     const { data: anyCheck, error: couponError } = await supabase.rpc("shop_coupon_check", { p_code: WELCOME_COUPON, p_email: null, p_subtotal_cents: 0 });
     if (couponError) throw couponError;
     const rule = ruleFromCheck(anyCheck);
-    if (!rule || rule.kind !== "percent" || rule.percentOff == null) return json({ subscribed: true, coupon: null });
+    const coupon = rule && rule.kind === "percent" && rule.percentOff != null ? { code: rule.code, percentOff: rule.percentOff } : null;
 
-    if (isNew) {
-      const { data: mine } = await supabase.rpc("shop_coupon_check", { p_code: WELCOME_COUPON, p_email: email, p_subtotal_cents: 0 });
-      if (ruleFromCheck(mine)) {
-        try {
-          if (sub?.unsubscribe_token) await sendWelcomeCouponEmail(email, rule.code, rule.percentOff, String(sub.unsubscribe_token));
-        } catch (e) {
-          console.error("newsletter-subscribe: e-mail do cupom falhou", (e as Error).message);
-        }
+    if (sub && needsConfirmation && !recentlySent) {
+      // o cupom vai no e-mail só na primeira inscrição de quem nunca comprou
+      let emailCoupon: typeof coupon = null;
+      if (coupon && isNew) {
+        const { data: mine } = await supabase.rpc("shop_coupon_check", { p_code: WELCOME_COUPON, p_email: email, p_subtotal_cents: 0 });
+        if (ruleFromCheck(mine)) emailCoupon = coupon;
+      }
+      try {
+        await sendNewsletterConfirmEmail(email, String(sub.confirm_token), emailCoupon);
+        await supabase
+          .from("blog_subscribers")
+          .update({ confirm_sent_at: new Date().toISOString(), consent_text_version: textVersion })
+          .eq("id", sub.id);
+      } catch (e) {
+        console.error("newsletter-subscribe: e-mail de confirmação falhou", (e as Error).message);
       }
     }
-    return json({ subscribed: true, coupon: { code: rule.code, percentOff: rule.percentOff } });
+
+    // Resposta igual pra todo mundo: não revela se o e-mail já estava na lista.
+    return json({ subscribed: true, pendingConfirmation: true, coupon });
   } catch (e) {
     console.error("newsletter-subscribe error", e);
     return json({ code: "internal_error", message: "Não deu certo agora. Tente de novo em alguns minutos." }, 500);
