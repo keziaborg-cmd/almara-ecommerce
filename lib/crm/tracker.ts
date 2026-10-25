@@ -17,7 +17,6 @@ const ESSENTIAL_EVENTS = new Set([
   "address_completed",
   "checkout_started",
   "coupon_applied",
-  "newsletter_subscribed",
 ]);
 
 const ANON_KEY = STORAGE_KEYS.anonymousId;

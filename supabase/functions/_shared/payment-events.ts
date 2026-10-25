@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { mapMpStatusToOrderStatus, type MpPayment } from "./mercadopago.ts";
 import { sendOrderConfirmationEmail } from "./email.ts";
-import { crmTrack, type CrmTracking } from "./crm.ts";
+import { crmTrack, parseRequestedConsents, type CrmTracking } from "./crm.ts";
 
 type OrderStatus = ReturnType<typeof mapMpStatusToOrderStatus>;
 
@@ -16,6 +16,7 @@ interface OrderRow {
   telefone: string;
   total_cents: number;
   coupon_code: string | null;
+  requested_consents: unknown;
   rua: string;
   numero: string;
   complemento: string | null;
@@ -27,7 +28,7 @@ interface OrderRow {
 }
 
 const ORDER_COLUMNS =
-  "id, order_number, status, mp_payment_id, customer_id, nome, email, telefone, total_cents, coupon_code, rua, numero, complemento, bairro, cidade, uf, cep, shop_order_items(product_slug, product_name, qty, unit_price_cents)";
+  "id, order_number, status, mp_payment_id, customer_id, nome, email, telefone, total_cents, coupon_code, requested_consents, rua, numero, complemento, bairro, cidade, uf, cep, shop_order_items(product_slug, product_name, qty, unit_price_cents)";
 
 // status do Mercado Pago -> evento do CRM. "rejected" é recusa (emissor/antifraude); erro
 // técnico ao criar o pagamento é payment_failed, registrado em shop-process-payment.
@@ -184,6 +185,18 @@ export async function applyPaymentUpdate(
       };
       await crmTrack(supabase, { ...who, name: "order_confirmed", properties: orderProps, idempotencyKey: `order:${order.order_number}:confirmed` });
       await crmTrack(supabase, { ...who, name: "checkout_completed", properties: orderProps, idempotencyKey: `order:${order.order_number}:checkout_completed` });
+
+      // consentimentos marcados no checkout só valem com o pedido pago (e o CRM não deixa um
+      // consentimento de checkout desfazer um descadastro)
+      const requested = parseRequestedConsents(order.requested_consents);
+      for (const channel of requested?.channels ?? []) {
+        await crmTrack(supabase, {
+          ...who,
+          name: "consent_granted",
+          properties: { channel, source: "checkout", text_version: requested?.textVersion ?? null, order_number: order.order_number },
+          idempotencyKey: `order:${order.order_number}:consent:${channel}`,
+        });
+      }
 
       try {
         await sendOrderConfirmationEmail({

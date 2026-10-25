@@ -6,7 +6,7 @@ import { generateOrderNumber } from "../_shared/order-number.ts";
 import { createPreference } from "../_shared/mercadopago.ts";
 import { tierForCartUnits, unitPriceForTier } from "../_shared/pricing.ts";
 import { applyCoupon, looksLikeCouponCode, normalizeCouponCode, ruleFromCheck, type CouponRule } from "../_shared/coupons.ts";
-import { crmTrack, sanitizeTracking } from "../_shared/crm.ts";
+import { crmTrack, requestedConsentsFrom, sanitizeTracking } from "../_shared/crm.ts";
 
 interface RequestBody {
   customer: { nome: string; email: string; telefone: string };
@@ -30,7 +30,6 @@ interface RequestBody {
   consents?: { email?: boolean; whatsapp?: boolean; sms?: boolean; textVersion?: string };
 }
 
-const CONSENT_CHANNELS = ["email", "whatsapp", "sms"] as const;
 
 Deno.serve(async (req) => {
   const { json, preflight } = makeResponders(req);
@@ -158,13 +157,11 @@ Deno.serve(async (req) => {
       .eq("email", customer.email)
       .maybeSingle();
 
+    // Quem já existe não tem nome/telefone trocados por um checkout (qualquer um pode digitar o
+    // e-mail de outra pessoa); o contato deste pedido fica no próprio pedido.
     let customerId: string;
     if (existingCustomer) {
       customerId = existingCustomer.id;
-      await supabase
-        .from("shop_customers")
-        .update({ nome: customer.nome, telefone: customer.telefone, updated_at: new Date().toISOString() })
-        .eq("id", customerId);
     } else {
       const { data: inserted, error: insertCustomerError } = await supabase
         .from("shop_customers")
@@ -174,6 +171,10 @@ Deno.serve(async (req) => {
       if (insertCustomerError) throw insertCustomerError;
       customerId = inserted.id;
     }
+
+    // Consentimento marcado no checkout só vai pro CRM quando o pagamento for aprovado
+    // (applyPaymentUpdate) — e nunca desfaz um descadastro (regra do CRM).
+    const requestedConsents = requestedConsentsFrom(consents);
 
     let orderNumber = generateOrderNumber();
     let order;
@@ -201,6 +202,7 @@ Deno.serve(async (req) => {
           subtotal_cents: subtotalCents,
           total_cents: totalCents,
           coupon_code: coupon?.code ?? null,
+          requested_consents: requestedConsents,
           status: "pending",
         })
         .select("id, order_number, access_token")
@@ -252,20 +254,6 @@ Deno.serve(async (req) => {
       },
       idempotencyKey: `order:${order.order_number}:created`,
     });
-    for (const channel of CONSENT_CHANNELS) {
-      if (consents?.[channel] !== true) continue;
-      await crmTrack(supabase, {
-        ...who,
-        name: "consent_granted",
-        properties: {
-          channel,
-          source: "checkout",
-          text_version: typeof consents.textVersion === "string" ? consents.textVersion.slice(0, 40) : null,
-          order_number: order.order_number,
-        },
-        idempotencyKey: `order:${order.order_number}:consent:${channel}`,
-      });
-    }
 
     const functionsBaseUrl = Deno.env.get("SUPABASE_URL")!.replace(".supabase.co", ".functions.supabase.co");
     const preference = await createPreference({
