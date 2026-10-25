@@ -101,18 +101,24 @@ export type Database = {
           email: string
           id: string
           source_slug: string | null
+          unsubscribe_token: string
+          unsubscribed_at: string | null
         }
         Insert: {
           created_at?: string
           email: string
           id?: string
           source_slug?: string | null
+          unsubscribe_token?: string
+          unsubscribed_at?: string | null
         }
         Update: {
           created_at?: string
           email?: string
           id?: string
           source_slug?: string | null
+          unsubscribe_token?: string
+          unsubscribed_at?: string | null
         }
         Relationships: []
       }
@@ -1587,6 +1593,7 @@ export type Database = {
       }
       crm_track_web: { Args: { p_events: Json }; Returns: number }
       crm_unsubscribe: { Args: { p_message_id: string }; Returns: string }
+      newsletter_unsubscribe: { Args: { p_token: string }; Returns: string | null }
       ferramenta_entrar: { Args: { p_ferramenta: string }; Returns: string }
       ferramenta_meu_ranking: {
         Args: { p_ferramenta: string }

@@ -79,11 +79,16 @@ export async function sendOrderConfirmationEmail(data: OrderConfirmationEmailDat
   }
 }
 
-// Descadastro da newsletter por e-mail (a política promete link em toda comunicação promocional).
+// Descadastro da newsletter (a política promete link em toda comunicação promocional). O link leva
+// à página com o token do inscrito; o cabeçalho List-Unsubscribe-Post faz o botão "Cancelar
+// inscrição" do Gmail/Apple descadastrar com um clique (RFC 8058, POST /api/descadastro).
 const UNSUBSCRIBE_MAILTO = "mailto:ola@almara.com.br?subject=Cancelar%20inscri%C3%A7%C3%A3o%20na%20newsletter";
+const SITE = "https://almara.com.br";
 
 /** E-mail do pop-up da newsletter: o cupom de primeira compra. */
-export async function sendWelcomeCouponEmail(to: string, code: string, percentOff: number): Promise<void> {
+export async function sendWelcomeCouponEmail(to: string, code: string, percentOff: number, unsubscribeToken: string): Promise<void> {
+  const pageUrl = `${SITE}/descadastro?n=${encodeURIComponent(unsubscribeToken)}`;
+  const oneClickUrl = `${SITE}/api/descadastro?n=${encodeURIComponent(unsubscribeToken)}`;
   const html = `
     <div style="font-family:sans-serif;color:#1a1a1a;max-width:480px;margin:0 auto">
       <h2 style="color:#013f24">Que bom ter você por aqui</h2>
@@ -95,7 +100,7 @@ export async function sendWelcomeCouponEmail(to: string, code: string, percentOf
       <p style="margin:24px 0;text-align:center">
         <a href="https://almara.com.br/produtos" style="display:inline-block;padding:12px 24px;border-radius:999px;background:#013f24;color:#fffdf8;text-decoration:none;font-weight:bold">Ver os chás</a>
       </p>
-      <p style="margin-top:24px;color:#666;font-size:13px">Você recebeu este e-mail porque se inscreveu na newsletter em almara.com.br. <a href="${UNSUBSCRIBE_MAILTO}" style="color:#666">Cancelar inscrição</a>.</p>
+      <p style="margin-top:24px;color:#666;font-size:13px">Você recebeu este e-mail porque se inscreveu na newsletter em almara.com.br. <a href="${pageUrl}" style="color:#666">Cancelar inscrição</a>.</p>
     </div>
   `;
   const res = await fetch(RESEND_API, {
@@ -106,7 +111,10 @@ export async function sendWelcomeCouponEmail(to: string, code: string, percentOf
       to,
       subject: `Seu cupom de ${percentOff}% na primeira compra — Almara`,
       html,
-      headers: { "List-Unsubscribe": `<${UNSUBSCRIBE_MAILTO}>` },
+      headers: {
+        "List-Unsubscribe": `<${oneClickUrl}>, <${UNSUBSCRIBE_MAILTO}>`,
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      },
     }),
   });
   if (!res.ok) throw new Error(`Resend email send failed: ${res.status} ${await res.text()}`);
