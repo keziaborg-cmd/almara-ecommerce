@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 
 // Entrada de eventos do CRM pelo servidor (public.crm_track_server, definida em
-// almara-metrics/db/006_crm_core.sql). Nunca lança: o CRM fora do ar não pode
+// almara-metrics/db/006_crm_core.sql e 028). Nunca lança: o CRM fora do ar não pode
 // derrubar um pedido ou pagamento.
 export interface CrmServerEvent {
   name: string;
@@ -13,6 +13,9 @@ export interface CrmServerEvent {
   sessionId?: string | null;
   properties?: Record<string, unknown>;
   idempotencyKey?: string | null;
+  // true só para dado confirmado (pagamento aprovado): só então o CRM atualiza um cadastro que já
+  // comprou, liga o anonymous_id e grava consentimento (almara-metrics/db/028).
+  verified?: boolean;
 }
 
 export async function crmTrack(supabase: SupabaseClient, e: CrmServerEvent): Promise<void> {
@@ -27,6 +30,7 @@ export async function crmTrack(supabase: SupabaseClient, e: CrmServerEvent): Pro
       p_session_id: e.sessionId ?? null,
       p_properties: e.properties ?? {},
       p_idempotency_key: e.idempotencyKey ?? null,
+      p_verified: e.verified === true,
     });
     if (error) console.error("crm_track_server failed", e.name, error.message);
   } catch (err) {

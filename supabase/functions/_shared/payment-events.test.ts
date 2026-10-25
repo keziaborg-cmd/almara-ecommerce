@@ -17,9 +17,11 @@ type Row = Record<string, unknown>;
 function fakeDb(initial: Row, staleRead?: Row) {
   const order: Row = { ...initial };
   const events: string[] = [];
+  const verified: Record<string, boolean> = {};
   const client = {
-    rpc: async (_fn: string, args: { p_name: string }) => {
+    rpc: async (_fn: string, args: { p_name: string; p_verified: boolean }) => {
       events.push(args.p_name);
+      verified[args.p_name] = args.p_verified;
       return { error: null };
     },
     from(table: string) {
@@ -55,7 +57,7 @@ function fakeDb(initial: Row, staleRead?: Row) {
       return q;
     },
   };
-  return { client: client as never, order, events };
+  return { client: client as never, order, events, verified };
 }
 
 const baseOrder: Row = {
@@ -169,6 +171,27 @@ describe("applyPaymentUpdate", () => {
     await applyPaymentUpdate(db.client, payment({ id: 2002 }));
     expect(await applyPaymentUpdate(db.client, payment({ id: 2002, status: "refunded" }))).toBe("cancelled");
     expect(db.order.status).toBe("cancelled");
+  });
+});
+
+describe("identidade confirmada no CRM", () => {
+  it("só o que vem de pagamento aprovado vai como confirmado", async () => {
+    const approved = fakeDb({ ...baseOrder, requested_consents: { channels: ["email"], textVersion: "checkout-v1" } });
+    await applyPaymentUpdate(approved.client, payment({}));
+    expect(approved.verified).toMatchObject({
+      payment_approved: true,
+      order_confirmed: true,
+      checkout_completed: true,
+      consent_granted: true,
+    });
+
+    const pending = fakeDb(baseOrder);
+    await applyPaymentUpdate(pending.client, payment({ status: "pending", status_detail: "pending_waiting_transfer" }));
+    expect(Object.values(pending.verified).every((v) => v === false)).toBe(true);
+
+    const mismatch = fakeDb(baseOrder);
+    await applyPaymentUpdate(mismatch.client, payment({ transaction_amount: 1 }));
+    expect(Object.values(mismatch.verified).every((v) => v === false)).toBe(true);
   });
 });
 

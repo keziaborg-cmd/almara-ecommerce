@@ -164,6 +164,7 @@ export async function applyPaymentUpdate(
       reason: payment.status_detail ?? null,
     },
     idempotencyKey: `mp:${mpPaymentId}:${payment.status}`,
+    verified: payment.status === "approved",
   });
 
   if (payment.status === "approved") {
@@ -185,15 +186,17 @@ export async function applyPaymentUpdate(
         coupon: order.coupon_code,
         items,
       };
-      await crmTrack(supabase, { ...who, name: "order_confirmed", properties: orderProps, idempotencyKey: `order:${order.order_number}:confirmed` });
-      await crmTrack(supabase, { ...who, name: "checkout_completed", properties: orderProps, idempotencyKey: `order:${order.order_number}:checkout_completed` });
+      // pagamento aprovado: o dado do pedido passa a valer como identidade confirmada
+      const paid = { ...who, verified: true };
+      await crmTrack(supabase, { ...paid, name: "order_confirmed", properties: orderProps, idempotencyKey: `order:${order.order_number}:confirmed` });
+      await crmTrack(supabase, { ...paid, name: "checkout_completed", properties: orderProps, idempotencyKey: `order:${order.order_number}:checkout_completed` });
 
       // consentimentos marcados no checkout só valem com o pedido pago (e o CRM não deixa um
       // consentimento de checkout desfazer um descadastro)
       const requested = parseRequestedConsents(order.requested_consents);
       for (const channel of requested?.channels ?? []) {
         await crmTrack(supabase, {
-          ...who,
+          ...paid,
           name: "consent_granted",
           properties: { channel, source: "checkout", text_version: requested?.textVersion ?? null, order_number: order.order_number },
           idempotencyKey: `order:${order.order_number}:consent:${channel}`,
@@ -221,7 +224,7 @@ export async function applyPaymentUpdate(
           },
         });
         await crmTrack(supabase, {
-          ...who,
+          ...paid,
           name: "email_sent",
           properties: { template: "order_confirmation", kind: "transactional", order_number: order.order_number },
           idempotencyKey: `order:${order.order_number}:email:confirmation`,
