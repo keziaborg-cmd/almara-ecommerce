@@ -12,7 +12,7 @@ const SECTIONS: LegalSection[] = [
     title: "Escopo desta política",
     blocks: [
       { t: "p", text: "Esta Política aplica-se ao **site, à loja virtual e ao aplicativo Almara+**." },
-      { t: "p", text: "O aplicativo possui Termos de Uso próprios, disponíveis dentro dele. O tratamento de dados pessoais em ambos os ambientes segue esta Política, com as informações específicas do aplicativo descritas nas seções 3-A e 3-B." },
+      { t: "p", text: "O aplicativo possui Termos de Uso próprios, disponíveis dentro dele. O tratamento de dados pessoais em ambos os ambientes segue esta Política, com as informações específicas do aplicativo descritas na seção 3-A." },
     ],
   },
   {
@@ -101,7 +101,7 @@ const SECTIONS: LegalSection[] = [
       { t: "h3", text: "3-A.9. Almigos e Liga semanal" },
       { t: "p", text: "**Almigos:** o usuário escolhe um @usuário e pode adicionar amigos que também o adicionaram. Entre almigos aparecem nome, @usuário, avatar (Broto), nível, sequência e os números da semana (Pomodoros, tarefas, hábitos, dias de jornada e XP)." },
       { t: "p", text: "A jornada atual e a quantidade de metas e sonhos só aparecem se o usuário permitir nas escolhas de privacidade. **Não há chat entre usuários.** Desfazer a amizade remove o acesso a essas informações." },
-      { t: "p", text: "**Liga semanal:** a participação é opcional e usa apenas apelido e avatar, sem dados pessoais." },
+      { t: "p", text: "**Liga semanal:** a participação é opcional e usa apenas apelido e avatar, sem outros dados pessoais." },
       { t: "h3", text: "3-A.10. Registro de uso do aplicativo" },
       { t: "p", text: "O aplicativo registra eventos de uso — por exemplo, abrir uma tela ou concluir uma sessão — **sem texto livre**, vinculados à conta e a um código aleatório de instalação, para entender como o aplicativo é usado e melhorá-lo." },
       { t: "p", text: "O aplicativo **não exibe anúncios e não faz rastreamento entre aplicativos**." },
