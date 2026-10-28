@@ -12,7 +12,7 @@ const SECTIONS: LegalSection[] = [
     title: "Escopo desta política",
     blocks: [
       { t: "p", text: "Esta Política aplica-se ao **site, à loja virtual e ao aplicativo Almara+**." },
-      { t: "p", text: "O aplicativo possui Termos de Uso próprios, disponíveis dentro dele. O tratamento de dados pessoais em ambos os ambientes segue esta Política, com as informações específicas do aplicativo descritas na seção 3-A e em “Informações de bem-estar”." },
+      { t: "p", text: "O aplicativo possui Termos de Uso próprios, disponíveis dentro dele. O tratamento de dados pessoais em ambos os ambientes segue esta Política, com as informações específicas do aplicativo descritas na seção 3-A." },
     ],
   },
   {
