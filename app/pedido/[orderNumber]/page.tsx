@@ -6,6 +6,7 @@ import Link from "next/link";
 import { formatCentsBRL } from "@/lib/cart/cart-store";
 import { trackPurchase } from "@/lib/tracking/events";
 import { ORDER_QR_PATH } from "@/lib/app-links";
+import { readOrderToken, saveOrderToken } from "@/lib/order-access";
 
 interface OrderStatus {
   orderNumber: string;
@@ -25,11 +26,19 @@ const STATUS_LABEL: Record<OrderStatus["status"], string> = {
 export default function PedidoConfirmacaoPage() {
   const params = useParams<{ orderNumber: string }>();
   const searchParams = useSearchParams();
-  const token = searchParams.get("token");
+  const urlToken = searchParams.get("token");
   const [order, setOrder] = useState<OrderStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // o código do pedido fica guardado no navegador, não na URL (lib/order-access.ts)
+    const token = urlToken ?? readOrderToken(params.orderNumber);
+    if (urlToken && saveOrderToken(params.orderNumber, urlToken)) {
+      const rest = new URLSearchParams(window.location.search);
+      rest.delete("token");
+      const q = rest.toString();
+      window.history.replaceState(window.history.state, "", `${window.location.pathname}${q ? `?${q}` : ""}${window.location.hash}`);
+    }
     if (!token) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time guard, not a render loop
       setError("Link de confirmação inválido.");
@@ -69,7 +78,7 @@ export default function PedidoConfirmacaoPage() {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [params.orderNumber, token]);
+  }, [params.orderNumber, urlToken]);
 
   if (error) {
     return (

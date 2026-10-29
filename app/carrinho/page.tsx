@@ -25,6 +25,7 @@ import { PixQrCode } from "@/components/checkout/pix-qr-code";
 import { StepBadge } from "@/components/checkout/step-badge";
 import { trackBeginCheckout } from "@/lib/tracking/events";
 import { getTrackingIds, track } from "@/lib/crm/tracker";
+import { orderPagePath } from "@/lib/order-access";
 
 function Field({
   label,
@@ -529,7 +530,7 @@ export default function CarrinhoPage() {
                     accessToken={orderDraft.accessToken}
                     onConfirmed={() => {
                       useCartStore.getState().clear();
-                      router.push(`/pedido/${orderDraft.orderNumber}?token=${orderDraft.accessToken}`);
+                      router.push(orderPagePath(orderDraft.orderNumber, orderDraft.accessToken));
                     }}
                     onRetry={() => setPixPending(null)}
                   />
@@ -542,7 +543,7 @@ export default function CarrinhoPage() {
                     payerEmail={form.email}
                     onApproved={() => {
                       useCartStore.getState().clear();
-                      router.push(`/pedido/${orderDraft.orderNumber}?token=${orderDraft.accessToken}`);
+                      router.push(orderPagePath(orderDraft.orderNumber, orderDraft.accessToken));
                     }}
                     onPixPending={(pix) => setPixPending(pix)}
                     onError={(message) => setError(message)}

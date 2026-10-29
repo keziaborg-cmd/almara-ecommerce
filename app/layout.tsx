@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import localFont from "next/font/local";
 import { Montserrat } from "next/font/google";
 import "./globals.css";
@@ -8,6 +9,7 @@ import { AppProviders } from "@/components/providers/app-providers";
 import { TrackingScripts } from "@/components/providers/tracking-scripts";
 import { SITE_URL } from "@/lib/site";
 import { JsonLd, organizationJsonLd, websiteJsonLd } from "@/lib/seo/json-ld";
+import { ORDER_TOKEN_CLEANUP_SCRIPT } from "@/lib/order-access";
 
 const carena = localFont({
   src: "../public/fonts/Carena-Regular.otf",
@@ -64,6 +66,10 @@ export default function RootLayout({
           <div className="flex-1">{children}</div>
           <Footer />
         </AppProviders>
+        {/* tira o código de acesso da URL de /pedido antes do GA4 carregar (lib/order-access.ts) */}
+        <Script id="order-token-cleanup" strategy="beforeInteractive">
+          {ORDER_TOKEN_CLEANUP_SCRIPT}
+        </Script>
         <TrackingScripts />
         <JsonLd data={[organizationJsonLd(), websiteJsonLd()]} />
       </body>
