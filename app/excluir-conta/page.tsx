@@ -17,10 +17,15 @@ const SECTIONS: LegalSection[] = [
     blocks: [
       { t: "li", text: "Dados da sua conta: nome, e-mail e endereço" },
       { t: "li", text: "Todo o conteúdo do diário e os registros de humor" },
-      { t: "li", text: "As conversas com a Mara" },
+      { t: "li", text: "As conversas com a Mara, inclusive as transcrições das conversas por voz" },
       { t: "li", text: "O progresso das jornadas, o jardim, hábitos e tarefas" },
+      { t: "li", text: "Metas, sonhos e as fotos do Quadro dos sonhos" },
+      { t: "li", text: "Seus dados no Almigos" },
+      { t: "li", text: "As integrações com Trello e ClickUp (o acesso ao Trello é revogado)" },
+      { t: "li", text: "O identificador do aparelho para notificações" },
       { t: "li", text: "Preferências e configurações" },
       { t: "p", text: "Isso é apagado por completo e não pode ser recuperado." },
+      { t: "p", text: "Se você entrou com a Apple, o acesso do Almara+ ao seu login da Apple também é revogado." },
     ],
   },
   {
@@ -31,6 +36,19 @@ const SECTIONS: LegalSection[] = [
         text: "Informações de pedidos de produtos já realizados são mantidas **de forma anonimizada**, sem vínculo com você, pelo prazo exigido pela legislação fiscal. Isso está previsto no artigo 18, VI, da LGPD, que ressalva a conservação de dados para cumprimento de obrigação legal.",
       },
       { t: "p", text: "Nenhum desses registros permite identificar você depois da exclusão." },
+    ],
+  },
+  {
+    title: "Excluir só alguns dados, sem apagar a conta",
+    blocks: [
+      {
+        t: "p",
+        text: "No app Almara+, você pode apagar a qualquer momento entradas do diário, tarefas, hábitos e fotos do Quadro dos sonhos. Eles são removidos dos nossos servidores na hora.",
+      },
+      {
+        t: "p",
+        text: "Para apagar as conversas com a Mara, metas e sonhos, exclua a conta (passos acima) ou escreva para o nosso suporte.",
+      },
     ],
   },
   {
