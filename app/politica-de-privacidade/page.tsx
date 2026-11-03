@@ -82,7 +82,7 @@ const SECTIONS: LegalSection[] = [
       { t: "p", text: "Quando a verificação identifica esse tipo de conteúdo, a mensagem **não é enviada ao fornecedor de inteligência artificial** e o aplicativo apresenta informações de apoio, incluindo o telefone do Centro de Valorização da Vida." },
       { t: "p", text: "Nesse caso, o aplicativo registra na conta do usuário apenas a data e a hora do acionamento, **sem armazenar a mensagem nem qualquer parte dela**. Esse registro existe para que, nas 24 horas seguintes, as mensagens do usuário não fiquem sujeitas a limite de uso ou a exigência de assinatura. Ele é eliminado automaticamente após 24 horas e também na exclusão da conta." },
       { t: "p", text: "As conversas também ficam armazenadas na conta do usuário dentro do aplicativo, para que ele possa consultá-las. São dois tratamentos distintos: o armazenamento na conta e a transmissão do conteúdo ao fornecedor de inteligência artificial." },
-      { t: "p", text: "O usuário pode apagar suas conversas, e a exclusão da conta remove todas elas." },
+      { t: "p", text: "O usuário pode pedir ao suporte a exclusão das conversas com a Mara, e a exclusão da conta remove todas elas." },
       { t: "h3", text: "3-A.5. Conversas por voz com a Mara" },
       { t: "p", text: "O modo de voz é **opcional**. O microfone só é utilizado durante a conversa por voz, quando o usuário a abre, e pode ser silenciado ou a conversa encerrada a qualquer momento." },
       { t: "kv", k: "Para onde vai o áudio", v: "o áudio é transmitido em tempo real, de forma criptografada, à **OpenAI**, nos Estados Unidos, que fornece a tecnologia de voz. A Almara **não grava nem guarda o áudio**. A OpenAI pode manter esse conteúdo por até 30 dias, apenas para prevenir abuso, e não o utiliza para treinar modelos." },
@@ -336,7 +336,7 @@ export default function Page() {
   return (
     <LegalPage
       title={"Política de Privacidade e Cookies"}
-      updated={"outubro de 2026"}
+      updated={"novembro de 2026"}
       intro={INTRO}
       sections={SECTIONS}
       related={RELATED}

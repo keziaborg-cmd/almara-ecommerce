@@ -17,10 +17,15 @@ const SECTIONS: LegalSection[] = [
     blocks: [
       { t: "li", text: "Dados da sua conta: nome, e-mail e endereço" },
       { t: "li", text: "Todo o conteúdo do diário e os registros de humor" },
-      { t: "li", text: "As conversas com a Mara" },
+      { t: "li", text: "As conversas com a Mara, inclusive as transcrições das conversas por voz" },
       { t: "li", text: "O progresso das jornadas, o jardim, hábitos e tarefas" },
+      { t: "li", text: "Metas, sonhos e as fotos do Quadro dos sonhos" },
+      { t: "li", text: "Seus dados no Almigos" },
+      { t: "li", text: "As integrações com Trello e ClickUp (o acesso ao Trello é revogado)" },
+      { t: "li", text: "O identificador do aparelho para notificações" },
       { t: "li", text: "Preferências e configurações" },
       { t: "p", text: "Isso é apagado por completo e não pode ser recuperado." },
+      { t: "p", text: "Se você entrou com a Apple, o acesso do Almara+ ao seu login da Apple também é revogado." },
     ],
   },
   {
