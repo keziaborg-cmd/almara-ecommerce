@@ -34,6 +34,19 @@ const SECTIONS: LegalSection[] = [
     ],
   },
   {
+    title: "Excluir só alguns dados, sem apagar a conta",
+    blocks: [
+      {
+        t: "p",
+        text: "No app Almara+, você pode apagar a qualquer momento entradas do diário, tarefas, hábitos e fotos do Quadro dos sonhos. Eles são removidos dos nossos servidores na hora.",
+      },
+      {
+        t: "p",
+        text: "Para apagar as conversas com a Mara, metas e sonhos, exclua a conta (passos acima) ou escreva para o nosso suporte.",
+      },
+    ],
+  },
+  {
     title: "Sobre a assinatura",
     blocks: [
       {
