@@ -69,8 +69,13 @@ export function Footer() {
           </div>
         </div>
       </div>
-      <div className="mx-auto mt-9 max-w-[1240px] border-t border-creme/15 pt-[22px] text-[13px] text-[#88a382] xl:max-w-[1400px] 2xl:max-w-[1600px]">
-        © 2026 Almara. Todos os direitos reservados.
+      {/* pb no celular: o botão flutuante do WhatsApp fica por cima do fim da página */}
+      <div className="mx-auto mt-9 max-w-[1240px] border-t border-creme/15 pt-[22px] pb-20 text-[13px] text-[#88a382] sm:pb-0 xl:max-w-[1400px] 2xl:max-w-[1600px]">
+        <p>© 2026 Almara. Todos os direitos reservados.</p>
+        <p className="mt-1">
+          ALMARA PRODUTOS NATURAIS LTDA · <span className="whitespace-nowrap">CNPJ 69.611.850/0001-22</span> ·{" "}
+          <span className="whitespace-nowrap">São Paulo/SP</span>
+        </p>
       </div>
     </footer>
   );
