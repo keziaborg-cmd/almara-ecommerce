@@ -6,9 +6,10 @@ import { useRouter } from "next/navigation";
 import {
   useCartStore,
   selectCartLines,
-  selectCartUnits,
   selectCartTier,
   selectSubtotalCents,
+  selectSubtotalsByKind,
+  selectLatasUnits,
   formatCentsBRL,
   cartSnapshot,
 } from "@/lib/cart/cart-store";
@@ -19,7 +20,9 @@ import {
   FREE_SHIPPING_MIN_CENTS,
   type ShippingQuoteOption,
 } from "@/lib/cart/shipping-rules";
-import { applyCoupon, looksLikeCouponCode, normalizeCouponCode, type CouponRule } from "@/lib/cart/coupons";
+import { looksLikeCouponCode, normalizeCouponCode, type CouponRule } from "@/lib/cart/coupons";
+import { applyCouponToCart, COUPON_NOT_FOR_KITS, kitsOnSale } from "@/lib/cart/kits";
+import { KIT_SLUGS } from "@/data/kits";
 import { PaymentBrick, type PixPending } from "@/components/checkout/payment-brick";
 import { PixQrCode } from "@/components/checkout/pix-qr-code";
 import { StepBadge } from "@/components/checkout/step-badge";
@@ -122,9 +125,24 @@ export default function CarrinhoPage() {
   const cartViewTracked = useRef(false);
 
   const lines = hydrated ? selectCartLines(items) : [];
-  const cartUnits = selectCartUnits(items);
+  const latasUnits = selectLatasUnits(items);
   const cartTier = selectCartTier(items);
   const rawSubtotalCents = selectSubtotalCents(items);
+  // Cupom vale só nas latas avulsas (kit tem preço fixo): mesma regra do servidor.
+  const subtotalsByKind = selectSubtotalsByKind(items);
+  const hasKits = lines.some((l) => l.kind === "kit");
+  const couponInEffect = subtotalsByKind.latasSubtotalCents > 0 ? appliedCoupon : null;
+
+  // Kit só na Black Friday: fora do período ele sai do carrinho (o servidor também recusa).
+  const [kitsRemovedNotice, setKitsRemovedNotice] = useState(false);
+  useEffect(() => {
+    if (!hydrated || kitsOnSale(Date.now())) return;
+    const inCart = KIT_SLUGS.filter((slug) => (items[slug] ?? 0) > 0);
+    if (inCart.length === 0) return;
+    for (const slug of inCart) remove(slug);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- aviso único, depois de limpar o carrinho
+    setKitsRemovedNotice(true);
+  }, [hydrated, items, remove]);
 
   // Frete: cotado no Melhor Envio (função shop-calculate-shipping) pelo CEP e pelos itens. O
   // resultado guarda a chave da consulta; "carregando" é a chave atual ainda não ter resposta.
@@ -141,9 +159,11 @@ export default function CarrinhoPage() {
   const rawShippingFeeCents = selectedShipping?.priceCents ?? 0;
   // O desconto exibido aqui é só preview — o backend recalcula e valida o
   // código de novo em shop-create-order, nunca confia no total do cliente.
-  const { subtotalCents, shippingFeeCents: couponShippingFeeCents } = appliedCoupon
-    ? applyCoupon(appliedCoupon, rawSubtotalCents, rawShippingFeeCents)
-    : { subtotalCents: rawSubtotalCents, shippingFeeCents: rawShippingFeeCents };
+  const { subtotalCents, shippingFeeCents: couponShippingFeeCents } = applyCouponToCart(
+    couponInEffect,
+    subtotalsByKind,
+    rawShippingFeeCents,
+  );
   const shippingFeeCents = chargedShippingCents(couponShippingFeeCents, subtotalCents);
   const totalCents = subtotalCents + shippingFeeCents;
   const freeShippingMissingCents = FREE_SHIPPING_MIN_CENTS - subtotalCents;
@@ -234,13 +254,18 @@ export default function CarrinhoPage() {
       setCouponError("Código inválido.");
       return;
     }
+    if (subtotalsByKind.latasSubtotalCents === 0) {
+      setCouponError(COUPON_NOT_FOR_KITS);
+      return;
+    }
     setCouponChecking(true);
     let rule: CouponRule | null = null;
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/shop-validate-coupon`, {
         method: "POST",
         headers: { "Content-Type": "application/json", apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "" },
-        body: JSON.stringify({ code: normalized, subtotalCents: rawSubtotalCents }),
+        // pedido mínimo do cupom: só as latas avulsas
+        body: JSON.stringify({ code: normalized, subtotalCents: subtotalsByKind.latasSubtotalCents }),
       });
       const data = await res.json().catch(() => null);
       if (res.ok && data?.coupon) {
@@ -256,7 +281,7 @@ export default function CarrinhoPage() {
     if (!rule) return;
     setAppliedCoupon(rule);
     setCouponError(null);
-    const discounted = applyCoupon(rule, rawSubtotalCents, rawShippingFeeCents);
+    const discounted = applyCouponToCart(rule, subtotalsByKind, rawShippingFeeCents);
     track(
       "coupon_applied",
       {
@@ -354,7 +379,7 @@ export default function CarrinhoPage() {
             serviceId: selectedShipping.serviceId,
           },
           items: lines.map((l) => ({ slug: l.slug, qty: l.qty })),
-          couponCode: appliedCoupon?.code ?? undefined,
+          couponCode: couponInEffect?.code ?? undefined,
           tracking: getTrackingIds(),
           consents: { ...marketingConsent, textVersion: MARKETING_CONSENT_TEXT_VERSION },
         }),
@@ -471,7 +496,7 @@ export default function CarrinhoPage() {
                   {shippingOptions.map((opt) => {
                     const active = opt.serviceId === selectedShipping?.serviceId;
                     const optFee = chargedShippingCents(
-                      appliedCoupon ? applyCoupon(appliedCoupon, rawSubtotalCents, opt.priceCents).shippingFeeCents : opt.priceCents,
+                      applyCouponToCart(couponInEffect, subtotalsByKind, opt.priceCents).shippingFeeCents,
                       subtotalCents,
                     );
                     return (
@@ -536,6 +561,7 @@ export default function CarrinhoPage() {
                   />
                 ) : orderDraft ? (
                   <PaymentBrick
+                    allowBoleto={!hasKits}
                     orderNumber={orderDraft.orderNumber}
                     accessToken={orderDraft.accessToken}
                     amount={orderDraft.amount}
@@ -560,7 +586,7 @@ export default function CarrinhoPage() {
 
           <aside className="h-fit rounded-panel bg-verde-escuro p-7 lg:sticky lg:top-24">
             <div className="flex flex-col gap-4">
-              {hydrated && cartUnits > 0 && (
+              {hydrated && latasUnits > 0 && (
                 <div className="rounded-input bg-dourado/15 px-4 py-3">
                   <span className="text-xs font-bold uppercase tracking-[.08em] text-dourado">
                     {cartTier === 1 ? "Preço avulso" : cartTier === 2 ? "Desconto de 2 unidades" : "Maior desconto ativo"}
@@ -572,7 +598,10 @@ export default function CarrinhoPage() {
                 <div key={line.slug} className="flex items-center justify-between gap-2 text-sm text-creme">
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">{line.name}</p>
-                    <p className="text-texto-sobre-escuro-2">{formatCentsBRL(line.unitPriceCents)}</p>
+                    <p className="text-texto-sobre-escuro-2">
+                      {formatCentsBRL(line.unitPriceCents)}
+                      {line.kind === "kit" && " · preço fixo do kit"}
+                    </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-1.5">
                     <button onClick={() => setQty(line.slug, line.qty - 1)} className="h-6 w-6 shrink-0 rounded-full bg-creme/15">
@@ -592,6 +621,9 @@ export default function CarrinhoPage() {
 
               {!orderDraft && (
                 <div className="mt-2 border-t border-creme/15 pt-4">
+                  {appliedCoupon && !couponInEffect && (
+                    <p className="mb-2 text-xs text-texto-sobre-escuro-2">{COUPON_NOT_FOR_KITS} Ele volta a valer se você incluir latas avulsas.</p>
+                  )}
                   {appliedCoupon ? (
                     <div className="flex items-center justify-between rounded-input bg-creme/10 px-3.5 py-2.5 text-sm text-creme">
                       <span>
@@ -702,6 +734,10 @@ export default function CarrinhoPage() {
                 </fieldset>
               )}
 
+              {kitsRemovedNotice && (
+                <p className="text-sm text-dourado">Os kits da Black Friday saíram do carrinho: a promoção foi de 27/11 a 30/11.</p>
+              )}
+              {hasKits && <p className="text-xs text-texto-sobre-escuro-2">Pedidos com kit são pagos por Pix ou cartão.</p>}
               {error && <p className="text-sm text-red-300">{error}</p>}
 
               {!orderDraft && (

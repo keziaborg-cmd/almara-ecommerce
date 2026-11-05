@@ -4,8 +4,17 @@ import { chargedShippingCents, findShippingOption, MAX_UNITS_PER_QUOTE, normaliz
 import { calculateShipping, SHIPPING_ENVIRONMENT } from "../_shared/melhorEnvio.ts";
 import { generateOrderNumber } from "../_shared/order-number.ts";
 import { createPreference } from "../_shared/mercadopago.ts";
-import { tierForCartUnits, unitPriceForTier } from "../_shared/pricing.ts";
-import { applyCoupon, looksLikeCouponCode, normalizeCouponCode, ruleFromCheck, type CouponRule } from "../_shared/coupons.ts";
+import { looksLikeCouponCode, normalizeCouponCode, ruleFromCheck, type CouponRule } from "../_shared/coupons.ts";
+import {
+  applyCouponToCart,
+  type CatalogProduct,
+  COUPON_NOT_FOR_KITS,
+  expandKitsForShipping,
+  kitComponentSlugs,
+  kitContentsText,
+  kitsOnSale,
+  priceCart,
+} from "../_shared/kits.ts";
 import { crmTrack, requestedConsentsFrom, sanitizeTracking } from "../_shared/crm.ts";
 
 interface RequestBody {
@@ -67,53 +76,63 @@ Deno.serve(async (req) => {
 
     const supabase = createAdminClient();
 
+    const PRODUCT_COLUMNS = "id, slug, name, kind, weight_grams, price_cents, price_tier2_cents, price_tier3_cents, kit_components";
     const slugs = items.map((i) => i.slug);
     const { data: products, error: productsError } = await supabase
       .from("shop_products")
-      .select("id, slug, name, weight_grams, price_cents, price_tier2_cents, price_tier3_cents")
+      .select(PRODUCT_COLUMNS)
       .in("slug", slugs)
       .eq("active", true);
 
     if (productsError) throw productsError;
 
-    const productBySlug = new Map(products.map((p) => [p.slug, p]));
+    const productBySlug = new Map<string, CatalogProduct & { id: string; weight_grams: number }>(products.map((p) => [p.slug, p]));
     for (const item of items) {
       if (!productBySlug.has(item.slug) || !Number.isInteger(item.qty) || item.qty < 1) {
         return json({ message: `Item inválido: ${item.slug}.` }, 400);
       }
     }
 
-    // Volume-discount tier is decided by total units across the whole cart
-    // (any mix of flavors) — never trust a tier/price sent by the client.
-    const totalUnits = items.reduce((sum, item) => sum + item.qty, 0);
+    // Kit só na Black Friday (horário de Brasília), conferido aqui no servidor.
+    if (products.some((p) => p.kind === "kit") && !kitsOnSale(Date.now())) {
+      return json({ code: "kits_unavailable", message: "Os kits estão disponíveis só de 27/11 a 30/11. Tire o kit do carrinho para continuar." }, 409);
+    }
+
+    // Sabores dos kits: pro frete (cada kit vira as suas latas) e pro texto do pedido/nota.
+    const componentSlugs = kitComponentSlugs(products).filter((s) => !productBySlug.has(s));
+    const { data: components, error: componentsError } = componentSlugs.length
+      ? await supabase.from("shop_products").select(PRODUCT_COLUMNS).in("slug", componentSlugs)
+      : { data: [], error: null };
+    if (componentsError) throw componentsError;
+    const catalogBySlug = new Map(productBySlug);
+    for (const c of components ?? []) catalogBySlug.set(c.slug, c);
+    const shippingItems = expandKitsForShipping(items, catalogBySlug);
+
+    // Unidades despachadas (latas, contando as dos kits). Preço nunca vem do cliente.
+    const totalUnits = shippingItems.reduce((sum, item) => sum + item.qty, 0);
     if (totalUnits > MAX_UNITS_PER_QUOTE) {
       return json({ message: "Quantidade acima do limite por pedido. Fale com a gente pelo WhatsApp." }, 400);
     }
-    const tier = tierForCartUnits(totalUnits);
 
-    const orderItems = items.map((item) => {
-      const product = productBySlug.get(item.slug)!;
-      const unitPriceCents = unitPriceForTier(tier, product);
-      const subtotalCents = unitPriceCents * item.qty;
-      return {
-        product_id: product.id,
-        product_slug: product.slug,
-        product_name: product.name,
-        unit_price_cents: unitPriceCents,
-        qty: item.qty,
-        subtotal_cents: subtotalCents,
-      };
-    });
+    // Faixa de preço pela quantidade de LATAS AVULSAS; kit tem preço fixo e não conta.
+    const priced = priceCart(items, productBySlug);
+    const names = new Map([...catalogBySlug.values()].map((p) => [p.slug, p.name]));
+    const orderItems = priced.lines.map(({ kind, ...line }) => ({
+      ...line,
+      kit_contents: kind === "kit" ? kitContentsText(productBySlug.get(line.product_slug)!.kit_components ?? [], names) : null,
+    }));
 
-    const rawSubtotalCents = orderItems.reduce((sum, i) => sum + i.subtotal_cents, 0);
-
-    // Cupom: a regra e os limites (validade, usos, por cliente, pedido mínimo) vêm do banco.
+    // Cupom: a regra e os limites (validade, usos, por cliente, pedido mínimo) vêm do banco. Vale
+    // só nas latas avulsas, e o pedido mínimo olha só elas.
     let coupon: CouponRule | null = null;
     if (normalizedCoupon) {
+      if (priced.latasSubtotalCents === 0) {
+        return json({ code: "invalid_coupon", message: COUPON_NOT_FOR_KITS }, 400);
+      }
       const { data: check, error: couponError } = await supabase.rpc("shop_coupon_check", {
         p_code: normalizedCoupon,
         p_email: customer.email,
-        p_subtotal_cents: rawSubtotalCents,
+        p_subtotal_cents: priced.latasSubtotalCents,
       });
       if (couponError) throw couponError;
       coupon = ruleFromCheck(check);
@@ -126,11 +145,11 @@ Deno.serve(async (req) => {
     // Frete: recotado no Melhor Envio com o CEP e os itens que o servidor conhece, e o serviço
     // escolhido tem que estar entre as opções de agora. Nada de preço vindo do cliente.
     const catalog: Record<string, { weightGrams: number }> = {};
-    for (const p of products) catalog[p.slug] = { weightGrams: p.weight_grams };
+    for (const p of catalogBySlug.values()) catalog[p.slug] = { weightGrams: p.weight_grams };
     let shippingOptions;
     try {
       console.log("shop-create-order: cotando frete", { ambiente: SHIPPING_ENVIRONMENT });
-      shippingOptions = await calculateShipping(destinationCep, items, catalog);
+      shippingOptions = await calculateShipping(destinationCep, shippingItems, catalog);
     } catch (e) {
       console.error("shop-create-order: falha no Melhor Envio", (e as Error).message);
       return json({ code: "shipping_unavailable", message: "Não foi possível calcular o frete agora. Tente novamente em instantes." }, 502);
@@ -144,10 +163,9 @@ Deno.serve(async (req) => {
     }
 
     const rawShippingFee = chosenShipping.priceCents;
-    const { subtotalCents, shippingFeeCents: couponShippingFee } = coupon
-      ? applyCoupon(coupon, rawSubtotalCents, rawShippingFee)
-      : { subtotalCents: rawSubtotalCents, shippingFeeCents: rawShippingFee };
-    // Frete grátis acima do valor mínimo (sobre os produtos já com cupom).
+    const rawSubtotalCents = priced.latasSubtotalCents + priced.kitsSubtotalCents;
+    const { subtotalCents, shippingFeeCents: couponShippingFee } = applyCouponToCart(coupon, priced, rawShippingFee);
+    // Frete grátis acima do valor mínimo (sobre os produtos já com cupom; kits contam).
     const shippingFee = chargedShippingCents(couponShippingFee, subtotalCents);
     const totalCents = subtotalCents + shippingFee;
 
@@ -223,6 +241,17 @@ Deno.serve(async (req) => {
     const itemsToInsert = orderItems.map((i) => ({ ...i, order_id: order.id }));
     const { error: itemsError } = await supabase.from("shop_order_items").insert(itemsToInsert);
     if (itemsError) throw itemsError;
+
+    // Kit: segura as unidades por 30 min (com trava no banco). Acabou? O pedido é cancelado aqui.
+    if (priced.hasKits) {
+      const { data: hold, error: holdError } = await supabase.rpc("shop_kit_hold", { p_order_id: order.id });
+      if (holdError) throw holdError;
+      const h = hold as { ok?: boolean; name?: string } | null;
+      if (!h?.ok) {
+        await supabase.from("shop_orders").update({ status: "cancelled" }).eq("id", order.id);
+        return json({ code: "kit_sold_out", message: `${h?.name ?? "Este kit"} esgotou. Tire do carrinho para continuar.` }, 409);
+      }
+    }
 
     const who = {
       email: customer.email,

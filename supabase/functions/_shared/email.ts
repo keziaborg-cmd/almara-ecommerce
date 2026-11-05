@@ -31,7 +31,8 @@ export interface OrderConfirmationEmailData {
   subtotalCents: number;
   shippingFeeCents: number;
   couponCode: string | null;
-  items: { name: string; qty: number; unitPriceCents: number }[];
+  /** `contents`: sabores de um kit, por extenso (aparece embaixo do nome, pra nota fiscal e conferência). */
+  items: { name: string; qty: number; unitPriceCents: number; contents?: string | null }[];
   shipping: {
     rua: string;
     numero: string;
@@ -48,7 +49,7 @@ export function buildOrderConfirmationHtml(data: OrderConfirmationEmailData): st
   const itemsHtml = data.items
     .map(
       (i) =>
-        `<tr><td style="padding:6px 0">${i.qty}× ${e(i.name)}</td><td style="padding:6px 0;text-align:right">${formatCentsBRL(i.unitPriceCents * i.qty)}</td></tr>`,
+        `<tr><td style="padding:6px 0">${i.qty}× ${e(i.name)}${i.contents ? `<br/><span style="color:#666;font-size:13px">${e(i.name)}: ${e(i.contents)}</span>` : ""}</td><td style="padding:6px 0;text-align:right;vertical-align:top">${formatCentsBRL(i.unitPriceCents * i.qty)}</td></tr>`,
     )
     .join("");
   const itemsCents = data.items.reduce((sum, i) => sum + i.unitPriceCents * i.qty, 0);

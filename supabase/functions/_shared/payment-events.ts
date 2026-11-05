@@ -26,11 +26,11 @@ interface OrderRow {
   cidade: string;
   uf: string;
   cep: string;
-  shop_order_items: { product_slug: string; product_name: string; qty: number; unit_price_cents: number }[];
+  shop_order_items: { product_slug: string; product_name: string; qty: number; unit_price_cents: number; kit_contents?: string | null }[];
 }
 
 const ORDER_COLUMNS =
-  "id, order_number, status, mp_payment_id, customer_id, nome, email, telefone, total_cents, subtotal_cents, shipping_fee_cents, coupon_code, requested_consents, rua, numero, complemento, bairro, cidade, uf, cep, shop_order_items(product_slug, product_name, qty, unit_price_cents)";
+  "id, order_number, status, mp_payment_id, customer_id, nome, email, telefone, total_cents, subtotal_cents, shipping_fee_cents, coupon_code, requested_consents, rua, numero, complemento, bairro, cidade, uf, cep, shop_order_items(product_slug, product_name, qty, unit_price_cents, kit_contents)";
 
 // status do Mercado Pago -> evento do CRM. "rejected" é recusa (emissor/antifraude); erro
 // técnico ao criar o pagamento é payment_failed, registrado em shop-process-payment.
@@ -212,7 +212,7 @@ export async function applyPaymentUpdate(
           subtotalCents: order.subtotal_cents,
           shippingFeeCents: order.shipping_fee_cents,
           couponCode: order.coupon_code,
-          items: order.shop_order_items.map((i) => ({ name: i.product_name, qty: i.qty, unitPriceCents: i.unit_price_cents })),
+          items: order.shop_order_items.map((i) => ({ name: i.product_name, qty: i.qty, unitPriceCents: i.unit_price_cents, contents: i.kit_contents ?? null })),
           shipping: {
             rua: order.rua,
             numero: order.numero,

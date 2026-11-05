@@ -5,6 +5,7 @@ import { Montserrat } from "next/font/google";
 import "./globals.css";
 import { Nav } from "@/components/nav/nav";
 import { Footer } from "@/components/footer/footer";
+import { BlackFridayFaixa } from "@/components/blackfriday/faixa";
 import { AppProviders } from "@/components/providers/app-providers";
 import { TrackingScripts } from "@/components/providers/tracking-scripts";
 import { SITE_URL } from "@/lib/site";
@@ -62,6 +63,7 @@ export default function RootLayout({
         className={`${carena.variable} ${montserrat.variable} flex min-h-screen flex-col overflow-x-hidden font-body bg-creme text-tinta antialiased`}
       >
         <AppProviders>
+          <BlackFridayFaixa />
           <Nav />
           <div className="flex-1">{children}</div>
           <Footer />
