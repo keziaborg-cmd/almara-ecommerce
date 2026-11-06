@@ -31,7 +31,7 @@ const SECTIONS: LegalSection[] = [
       { t: "kv", k: "CNPJ", v: "69.611.850/0001-22" },
       { t: "kv", k: "Endereço", v: "Rua Heráclito Graça, 124, apto 33 — Casa Verde Média — São Paulo/SP — CEP 02530-030" },
       { t: "kv", k: "E-mail", v: "ola@almara.com.br" },
-      { t: "kv", k: "WhatsApp", v: "(11) 93768-1729" },
+      { t: "kv", k: "WhatsApp", v: "(19) 99030-6995" },
       { t: "kv", k: "Atendimento", v: "Segunda a sexta, das 8h às 18h" },
     ],
   },
@@ -161,7 +161,7 @@ const SECTIONS: LegalSection[] = [
     title: "15. Contato",
     blocks: [
       { t: "kv", k: "E-mail", v: "ola@almara.com.br" },
-      { t: "kv", k: "WhatsApp", v: "(11) 93768-1729" },
+      { t: "kv", k: "WhatsApp", v: "(19) 99030-6995" },
       { t: "kv", k: "Atendimento", v: "Segunda a sexta, das 8h às 18h" },
     ],
   },
