@@ -127,6 +127,7 @@ export function LegalPage({
   intro,
   sections,
   related,
+  topo,
   children,
 }: {
   eyebrow?: string;
@@ -135,6 +136,8 @@ export function LegalPage({
   intro?: string[];
   sections: LegalSection[];
   related?: { href: string; label: string }[];
+  /** Linhas logo abaixo do título, antes da introdução (ex.: razão social e CNPJ). */
+  topo?: { k: string; v: string }[];
   children?: ReactNode;
 }) {
   return (
@@ -143,6 +146,14 @@ export function LegalPage({
         <p className="eyebrow text-eyebrow-claro">{eyebrow}</p>
         <h1 className="mt-3 font-display text-[clamp(38px,6vw,56px)] text-verde-escuro">{title}</h1>
         {updated ? <p className="mt-4 text-sm text-tinta/60">Última atualização: {updated}</p> : null}
+
+        {topo?.length ? (
+          <div className="mt-6 flex flex-col gap-2 rounded-xl border border-verde-escuro/15 bg-verde-escuro/[0.04] p-4">
+            {topo.map((l) => (
+              <Bloco key={l.k} b={{ t: "kv", k: l.k, v: l.v }} />
+            ))}
+          </div>
+        ) : null}
 
         {intro?.map((p) => (
           <p key={p} className="mt-6 leading-relaxed text-tinta/80">
