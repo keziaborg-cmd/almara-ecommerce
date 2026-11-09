@@ -70,14 +70,25 @@ export interface MpPayment {
 // notificação são sempre do servidor — senão o comprador escolheria quanto paga.
 export function buildPaymentBody(
   formData: Record<string, unknown>,
-  params: { amountCents: number; externalReference: string; notificationUrl: string },
+  params: { amountCents: number; externalReference: string; notificationUrl: string; pixExpiresAtMs?: number | null },
 ): Record<string, unknown> {
-  return {
+  const body: Record<string, unknown> = {
     ...formData,
     transaction_amount: params.amountCents / 100,
     external_reference: params.externalReference,
     notification_url: params.notificationUrl,
   };
+  // Pedido com kit: o Pix vence junto com a reserva das unidades (depois disso a unidade volta pra
+  // venda e um Pix pago atrasado venderia além do limite).
+  if (params.pixExpiresAtMs != null && formData.payment_method_id === "pix") {
+    body.date_of_expiration = mpDateBrasilia(params.pixExpiresAtMs);
+  }
+  return body;
+}
+
+/** Data no formato que o Mercado Pago aceita, em horário de Brasília (ex.: 2026-11-27T10:30:00.000-03:00). */
+export function mpDateBrasilia(ms: number): string {
+  return new Date(ms - 3 * 3600_000).toISOString().replace("Z", "-03:00");
 }
 
 // Chave estável pro mesmo envio: clique duplo ou reenvio com o mesmo token de cartão (o Brick
@@ -100,6 +111,7 @@ export async function createPayment(params: {
   externalReference: string;
   notificationUrl: string;
   idempotencyKey: string;
+  pixExpiresAtMs?: number | null;
 }): Promise<MpPayment> {
   const res = await fetch(`${MP_API}/v1/payments`, {
     method: "POST",

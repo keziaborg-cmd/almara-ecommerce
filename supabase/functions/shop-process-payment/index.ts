@@ -4,6 +4,7 @@ import { createPayment, paymentIdempotencyKey } from "../_shared/mercadopago.ts"
 import { applyPaymentUpdate } from "../_shared/payment-events.ts";
 import { couponBlockReason } from "../_shared/coupon-recheck.ts";
 import { crmTrack, sanitizeTracking } from "../_shared/crm.ts";
+import { kitsOnSale, paymentMethodAllowedForKits, PIX_BEFORE_HOLD_END_MS } from "../_shared/kits.ts";
 
 interface RequestBody {
   orderNumber: string;
@@ -28,7 +29,7 @@ Deno.serve(async (req) => {
 
     const { data: order, error: orderError } = await supabase
       .from("shop_orders")
-      .select("id, order_number, status, customer_id, nome, email, telefone, total_cents, coupon_code, shop_order_items(subtotal_cents)")
+      .select("id, order_number, status, customer_id, nome, email, telefone, total_cents, coupon_code, shop_order_items(subtotal_cents, shop_products(kind))")
       .eq("order_number", orderNumber)
       .eq("access_token", accessToken)
       .maybeSingle();
@@ -40,10 +41,33 @@ Deno.serve(async (req) => {
       return json({ status: "approved" });
     }
 
-    const rawSubtotalCents = order.shop_order_items.reduce((sum, i) => sum + i.subtotal_cents, 0);
-    const couponBlocked = await couponBlockReason(supabase, order, rawSubtotalCents);
+    // Cupom conferido de novo com o subtotal só das latas avulsas (kit não entra no cupom).
+    const isKit = (i: { shop_products: { kind: string } | { kind: string }[] | null }) =>
+      (Array.isArray(i.shop_products) ? i.shop_products[0]?.kind : i.shop_products?.kind) === "kit";
+    const hasKits = order.shop_order_items.some(isKit);
+    const latasSubtotalCents = order.shop_order_items.filter((i) => !isKit(i)).reduce((sum, i) => sum + i.subtotal_cents, 0);
+    const couponBlocked = await couponBlockReason(supabase, order, latasSubtotalCents);
     if (couponBlocked) {
       return json({ code: "coupon_unavailable", message: couponBlocked }, 409);
+    }
+
+    // Kit: só no período, nada de boleto (pago dias depois) e, com trava no banco, a unidade ainda
+    // tem que estar livre — dois pagamentos pela última unidade passam um de cada vez aqui.
+    let pixExpiresAtMs: number | null = null;
+    if (hasKits) {
+      if (!kitsOnSale(Date.now())) {
+        return json({ code: "kits_unavailable", message: "Os kits estão disponíveis só de 27/11 a 30/11." }, 409);
+      }
+      if (!paymentMethodAllowedForKits(formData.payment_method_id, formData.payment_type_id)) {
+        return json({ code: "payment_method_not_allowed", message: "Pedidos com kit são pagos por Pix ou cartão." }, 400);
+      }
+      const { data: hold, error: holdError } = await supabase.rpc("shop_kit_hold", { p_order_id: order.id });
+      if (holdError) throw holdError;
+      const h = hold as { ok?: boolean; name?: string; hold_until?: string } | null;
+      if (!h?.ok) {
+        return json({ code: "kit_sold_out", message: `${h?.name ?? "Este kit"} esgotou. Volte ao carrinho e refaça o pedido.` }, 409);
+      }
+      pixExpiresAtMs = h.hold_until ? Date.parse(h.hold_until) - PIX_BEFORE_HOLD_END_MS : null;
     }
 
     const { count: previousAttempts } = await supabase
@@ -77,6 +101,7 @@ Deno.serve(async (req) => {
         externalReference: order.order_number,
         notificationUrl: `${functionsBaseUrl}/shop-mercadopago-webhook`,
         idempotencyKey: await paymentIdempotencyKey(order.id, attempt, formData),
+        pixExpiresAtMs,
       });
     } catch (paymentErr) {
       await crmTrack(supabase, {

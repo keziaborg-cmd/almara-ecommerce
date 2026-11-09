@@ -9,6 +9,7 @@ import { ruleFromCheck } from "./coupons.ts";
 export async function couponBlockReason(
   supabase: SupabaseClient,
   order: { coupon_code: string | null; email: string },
+  /** Subtotal só das latas avulsas (o cupom não vale pra kits; o pedido mínimo olha só as latas). */
   rawSubtotalCents: number,
 ): Promise<string | null> {
   if (!order.coupon_code) return null;

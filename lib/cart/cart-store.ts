@@ -1,12 +1,18 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { teas, type TeaSlug } from "@/data/teas";
+import { kits, type KitSlug } from "@/data/kits";
 import { tierForCartUnits, unitPriceForTier, type PriceTier } from "@/lib/pricing/tiers";
 import { track } from "@/lib/crm/tracker";
 import { STORAGE_KEYS } from "@/lib/storage-keys";
 
+/** Lata avulsa ou kit da Black Friday. */
+export type CartSlug = TeaSlug | KitSlug;
+type CartItems = Partial<Record<CartSlug, number>>;
+
 export interface CartLine {
-  slug: TeaSlug;
+  slug: CartSlug;
+  kind: "lata" | "kit";
   name: string;
   qty: number;
   unitPriceCents: number;
@@ -14,10 +20,10 @@ export interface CartLine {
 }
 
 interface CartState {
-  items: Partial<Record<TeaSlug, number>>;
-  add: (slug: TeaSlug, qty?: number) => void;
-  setQty: (slug: TeaSlug, qty: number) => void;
-  remove: (slug: TeaSlug) => void;
+  items: CartItems;
+  add: (slug: CartSlug, qty?: number) => void;
+  setQty: (slug: CartSlug, qty: number) => void;
+  remove: (slug: CartSlug) => void;
   clear: () => void;
 }
 
@@ -70,33 +76,47 @@ export const useCartStore = create<CartState>()(
   ),
 );
 
-export function selectCartUnits(items: Partial<Record<TeaSlug, number>>): number {
+/** Itens no carrinho (latas + kits): o número do ícone do carrinho. */
+export function selectCartUnits(items: CartItems): number {
   return Object.values(items).reduce((sum: number, qty) => sum + (qty ?? 0), 0);
 }
 
-export function selectCartTier(items: Partial<Record<TeaSlug, number>>): PriceTier {
-  return tierForCartUnits(selectCartUnits(items));
+/** Latas avulsas: só elas definem a faixa de preço (kit tem preço fixo e não conta). */
+export function selectLatasUnits(items: CartItems): number {
+  return teas.reduce((sum, tea) => sum + (items[tea.slug] ?? 0), 0);
 }
 
-export function selectCartLines(items: Partial<Record<TeaSlug, number>>): CartLine[] {
+export function selectCartTier(items: CartItems): PriceTier {
+  return tierForCartUnits(selectLatasUnits(items));
+}
+
+export function selectCartLines(items: CartItems): CartLine[] {
   const tier = selectCartTier(items);
-  return teas
+  const latas: CartLine[] = teas
     .filter((tea) => (items[tea.slug] ?? 0) > 0)
     .map((tea) => {
       const qty = items[tea.slug]!;
       const unitPriceCents = unitPriceForTier(tier, tea);
-      return {
-        slug: tea.slug,
-        name: tea.name,
-        qty,
-        unitPriceCents,
-        subtotalCents: unitPriceCents * qty,
-      };
+      return { slug: tea.slug, kind: "lata", name: tea.name, qty, unitPriceCents, subtotalCents: unitPriceCents * qty };
     });
+  const kitLines: CartLine[] = kits
+    .filter((kit) => (items[kit.slug] ?? 0) > 0)
+    .map((kit) => {
+      const qty = items[kit.slug]!;
+      return { slug: kit.slug, kind: "kit", name: kit.name, qty, unitPriceCents: kit.priceCents, subtotalCents: kit.priceCents * qty };
+    });
+  return [...latas, ...kitLines];
 }
 
-export function selectSubtotalCents(items: Partial<Record<TeaSlug, number>>): number {
+export function selectSubtotalCents(items: CartItems): number {
   return selectCartLines(items).reduce((sum, line) => sum + line.subtotalCents, 0);
+}
+
+/** Subtotal das latas avulsas e dos kits, separados (o cupom vale só nas latas). */
+export function selectSubtotalsByKind(items: CartItems): { latasSubtotalCents: number; kitsSubtotalCents: number } {
+  const lines = selectCartLines(items);
+  const sum = (kind: CartLine["kind"]) => lines.filter((l) => l.kind === kind).reduce((s, l) => s + l.subtotalCents, 0);
+  return { latasSubtotalCents: sum("lata"), kitsSubtotalCents: sum("kit") };
 }
 
 export function formatCentsBRL(cents: number): string {
@@ -108,7 +128,7 @@ export function formatCentsBRL(cents: number): string {
 
 // Contexto que vai junto de todo evento de carrinho do CRM — dá pra reconstruir o carrinho
 // inteiro a partir de qualquer evento, sem depender da ordem dos anteriores.
-export function cartSnapshot(items: Partial<Record<TeaSlug, number>>) {
+export function cartSnapshot(items: CartItems) {
   const lines = selectCartLines(items);
   return {
     items: lines.map((l) => ({
@@ -122,11 +142,12 @@ export function cartSnapshot(items: Partial<Record<TeaSlug, number>>) {
   };
 }
 
-function productProps(slug: TeaSlug, items: Partial<Record<TeaSlug, number>>) {
+function productProps(slug: CartSlug, items: CartItems) {
   const tea = teas.find((t) => t.slug === slug);
+  const kit = kits.find((k) => k.slug === slug);
   return {
     product_id: slug,
-    product_name: tea?.name ?? slug,
-    price_cents: tea ? unitPriceForTier(selectCartTier(items), tea) : null,
+    product_name: tea?.name ?? kit?.name ?? slug,
+    price_cents: tea ? unitPriceForTier(selectCartTier(items), tea) : (kit?.priceCents ?? null),
   };
 }

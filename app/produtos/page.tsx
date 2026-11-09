@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { teas } from "@/data/teas";
 import { ProductCard } from "@/components/product/product-card";
+import { KitsShelf } from "@/components/blackfriday/kits-shelf";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/produtos" },
@@ -16,6 +17,7 @@ export default function CatalogoPage() {
           <p className="eyebrow text-eyebrow-claro">Nossos chás</p>
           <h1 className="mt-2 font-display text-[clamp(44px,7vw,84px)] text-verde-escuro">Escolha o seu ritual</h1>
         </div>
+        <KitsShelf />
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {teas.map((tea) => (
             <ProductCard key={tea.slug} tea={tea} />

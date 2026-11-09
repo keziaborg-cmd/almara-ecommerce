@@ -4,7 +4,8 @@
 import { makeResponders } from "../_shared/cors.ts";
 import { createAdminClient } from "../_shared/supabase-admin.ts";
 import { calculateShipping, SHIPPING_ENVIRONMENT } from "../_shared/melhorEnvio.ts";
-import { CEP_NOT_FOUND_MESSAGE, cepExists, normalizeCep, parseQuoteItems, pickShippingOptions } from "../_shared/shipping.ts";
+import { CEP_NOT_FOUND_MESSAGE, cepExists, MAX_UNITS_PER_QUOTE, normalizeCep, parseQuoteItems, pickShippingOptions } from "../_shared/shipping.ts";
+import { expandKitsForShipping, kitComponentSlugs } from "../_shared/kits.ts";
 
 Deno.serve(async (req) => {
   const { json, preflight } = makeResponders(req);
@@ -28,21 +29,32 @@ Deno.serve(async (req) => {
     const supabase = createAdminClient();
     const { data: products, error } = await supabase
       .from("shop_products")
-      .select("slug, weight_grams")
+      .select("slug, weight_grams, kind, kit_components")
       .in("slug", items.map((i) => i.slug))
       .eq("active", true);
     if (error) throw error;
-
-    const catalog: Record<string, { weightGrams: number }> = {};
-    for (const p of products ?? []) catalog[p.slug] = { weightGrams: p.weight_grams };
-    if (items.some((i) => !catalog[i.slug])) {
+    if (items.some((i) => !(products ?? []).some((p) => p.slug === i.slug))) {
       return json({ code: "invalid_items", message: "Há um produto indisponível no carrinho." }, 400);
+    }
+
+    // Kit vira as latas que vêm nele (peso e caixa reais).
+    const extra = kitComponentSlugs(products ?? []).filter((s) => !(products ?? []).some((p) => p.slug === s));
+    const { data: components, error: componentsError } = extra.length
+      ? await supabase.from("shop_products").select("slug, weight_grams, kind, kit_components").in("slug", extra)
+      : { data: [], error: null };
+    if (componentsError) throw componentsError;
+    const all = [...(products ?? []), ...(components ?? [])];
+    const catalog: Record<string, { weightGrams: number }> = {};
+    for (const p of all) catalog[p.slug] = { weightGrams: p.weight_grams };
+    const shippingItems = expandKitsForShipping(items, new Map(all.map((p) => [p.slug, p])));
+    if (shippingItems.reduce((s, i) => s + i.qty, 0) > MAX_UNITS_PER_QUOTE) {
+      return json({ code: "invalid_items", message: "Carrinho inválido ou grande demais para calcular o frete aqui." }, 400);
     }
 
     console.log("shop-calculate-shipping", { ambiente: SHIPPING_ENVIRONMENT });
     let options;
     try {
-      options = await calculateShipping(cep, items, catalog);
+      options = await calculateShipping(cep, shippingItems, catalog);
     } catch (e) {
       console.error("shop-calculate-shipping: falha no Melhor Envio", (e as Error).message);
       // O Melhor Envio recusa CEP que não existe (ex.: 69900-000, genérico da cidade) do mesmo jeito
