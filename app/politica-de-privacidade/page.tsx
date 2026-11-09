@@ -66,6 +66,7 @@ const SECTIONS: LegalSection[] = [
     blocks: [
       { t: "h3", text: "3-A.1. Conta" },
       { t: "p", text: "Nome, e-mail, senha (armazenada de forma criptografada) e, quando o usuário optar por comprar produtos pelo aplicativo, endereço de entrega." },
+      { t: "p", text: "No cadastro, o aplicativo também pede **CPF** e **número de celular**, usados para identificar a conta, evitar contas duplicadas e fraudes e, se o usuário autorizar, enviar comunicações por SMS ou WhatsApp. O consentimento para essas mensagens pode ser retirado a qualquer momento nas configurações do aplicativo." },
       { t: "p", text: "Também é possível entrar com a **Apple** ou com o **Google**. Nesse caso, recebemos o nome e o e-mail que o usuário autorizar a Apple ou o Google a compartilhar; a senha fica com a Apple ou com o Google e não é recebida pela Almara. Ao excluir a conta, o acesso pelo login com a Apple é revogado." },
       { t: "h3", text: "3-A.2. Uso das funcionalidades" },
       { t: "p", text: "Jornada escolhida, dia atual, lições concluídas, hábitos cadastrados, tarefas, progresso do jardim e registro de uso das ferramentas." },

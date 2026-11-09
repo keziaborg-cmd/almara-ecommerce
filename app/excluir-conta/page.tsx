@@ -15,7 +15,7 @@ const SECTIONS: LegalSection[] = [
   {
     title: "O que é excluído",
     blocks: [
-      { t: "li", text: "Dados da sua conta: nome, e-mail e endereço" },
+      { t: "li", text: "Dados da sua conta: nome, e-mail, CPF, celular e endereço" },
       { t: "li", text: "Todo o conteúdo do diário e os registros de humor" },
       { t: "li", text: "As conversas com a Mara, inclusive as transcrições das conversas por voz" },
       { t: "li", text: "O progresso das jornadas, o jardim, hábitos e tarefas" },
