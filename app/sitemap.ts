@@ -24,6 +24,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // exigidas pelas lojas (Apple e Google) como URL pública, então precisam
     // estar indexáveis — não entram no disallow do robots.txt.
     { url: `${SITE_URL}/termos-de-uso`, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${SITE_URL}/almara-mais/termos`, changeFrequency: "yearly", priority: 0.3 },
     { url: `${SITE_URL}/politica-de-trocas-e-devolucoes`, changeFrequency: "yearly", priority: 0.3 },
     { url: `${SITE_URL}/politica-de-privacidade`, changeFrequency: "yearly", priority: 0.3 },
     { url: `${SITE_URL}/suporte`, changeFrequency: "monthly", priority: 0.4 },
