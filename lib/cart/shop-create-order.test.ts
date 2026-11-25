@@ -14,9 +14,7 @@ describe("shop-create-order — frete", () => {
     expect(src).not.toMatch(/\bshipping\.(price|fee|cents|amount)/i);
   });
   it("recota o frete no servidor e usa o preço da opção cotada", () => {
-    // os itens do frete são os do carrinho com cada kit aberto nas suas latas (sem preço do cliente)
-    expect(src).toContain("const shippingItems = expandKitsForShipping(items, catalogBySlug);");
-    expect(src).toContain("calculateShipping(destinationCep, shippingItems, catalog)");
+    expect(src).toContain("calculateShipping(destinationCep, items, catalog)");
     expect(src).toContain("findShippingOption(shippingOptions, shipping.serviceId)");
     expect(src).toContain("const rawShippingFee = chosenShipping.priceCents;");
   });
