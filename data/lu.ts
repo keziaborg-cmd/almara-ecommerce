@@ -85,4 +85,4 @@ export const LU_WAITLIST_TEXT_VERSION = "lista-ios-lu-v1";
 export const LU_QR_GOOGLE_PLAY: string | null = null;
 
 /** Imagem da Lu no diorama (1080×1350). null = placeholder até a imagem da série chegar. */
-export const LU_IMAGE: string | null = null;
+export const LU_IMAGE: string | null = "/lu/pagina-lu.png";

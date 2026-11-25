@@ -184,7 +184,15 @@ function LuImage({ className, aspect }: { className: string; aspect: string }) {
   if (LU_IMAGE) {
     return (
       <div className={`relative overflow-hidden rounded-3xl ${aspect} ${className}`}>
-        <Image src={LU_IMAGE} alt="A Lu no diorama da série Salve a Lu" fill sizes="(min-width: 768px) 360px, 100vw" className="object-cover object-top" priority />
+        {/* a Lu fica na metade de baixo do quadro: nos cortes mais largos, o corte segue ela */}
+        <Image
+          src={LU_IMAGE}
+          alt="A Lu, sentada na cama à noite, olhando o celular no quarto do diorama"
+          fill
+          sizes="(min-width: 768px) 360px, 100vw"
+          className="object-cover object-[50%_78%]"
+          priority
+        />
       </div>
     );
   }
