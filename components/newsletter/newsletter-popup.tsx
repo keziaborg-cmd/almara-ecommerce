@@ -17,7 +17,7 @@ const STORAGE_KEY = "almara-newsletter";
 const DELAY_MS = 20_000;
 const SNOOZE_DAYS = 14;
 const CONSENT_TEXT_VERSION = "popup-newsletter-2026-10-23";
-const HIDDEN_ON = ["/carrinho", "/pedido", "/quiz", "/termos-de-uso", "/politica-", "/suporte", "/excluir-conta", "/descadastro"];
+const HIDDEN_ON = ["/carrinho", "/pedido", "/quiz", "/termos-de-uso", "/politica-", "/suporte", "/excluir-conta", "/descadastro", "/lu", "/lista-de-espera"];
 
 type Stored = { s: "dismissed" | "subscribed"; at: string };
 

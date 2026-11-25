@@ -1611,6 +1611,7 @@ export type Database = {
       crm_unsubscribe: { Args: { p_message_id: string }; Returns: string }
       newsletter_unsubscribe: { Args: { p_token: string }; Returns: string | null }
       newsletter_confirm: { Args: { p_token: string }; Returns: boolean }
+      app_waitlist_confirm: { Args: { p_token: string }; Returns: boolean }
       ferramenta_entrar: { Args: { p_ferramenta: string }; Returns: string }
       ferramenta_meu_ranking: {
         Args: { p_ferramenta: string }
