@@ -94,6 +94,9 @@ const nextConfig = {
       // Rebrand Smartea → Almara: endereços antigos continuam funcionando com 301 (permanente),
       // o código que os buscadores tratam como mudança definitiva de URL.
       ...RENAMED_PATHS.map(({ from, to }) => ({ source: from, destination: to, statusCode: 301 })),
+      // Link da bio do Instagram (série "Salve a Lu"). Temporário (307), não 301: o navegador não
+      // guarda, então dá pra trocar o destino ou a origem (utm) depois sem mudar o link da bio.
+      { source: "/salvealu", destination: "/lu?utm_source=ig-lu&utm_medium=bio", permanent: false },
     ];
   },
 };
