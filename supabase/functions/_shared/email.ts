@@ -149,3 +149,25 @@ export async function sendNewsletterConfirmEmail(
   });
   if (!res.ok) throw new Error(`Resend email send failed: ${res.status} ${await res.text()}`);
 }
+
+/** Confirmação da lista de espera do Almara+ no iPhone. Só o aviso de lançamento, sem marketing. */
+export async function sendAppWaitlistConfirmEmail(to: string, confirmToken: string): Promise<void> {
+  const confirmUrl = `${SITE}/lista-de-espera/confirmar?t=${encodeURIComponent(confirmToken)}`;
+  const html = `
+    <div style="font-family:sans-serif;color:#1a1a1a;max-width:480px;margin:0 auto">
+      <h2 style="color:#013f24">Confirme seu e-mail</h2>
+      <p>Recebemos um pedido para avisar este e-mail quando o Almara+ chegar na App Store. Para entrar na lista, confirme:</p>
+      <p style="margin:24px 0;text-align:center">
+        <a href="${confirmUrl}" style="display:inline-block;padding:12px 24px;border-radius:999px;background:#013f24;color:#fffdf8;text-decoration:none;font-weight:bold">Confirmar meu e-mail</a>
+      </p>
+      <p>Vamos mandar um único e-mail, quando o app estiver disponível para iPhone. Nada de newsletter nem ofertas.</p>
+      <p style="margin-top:24px;color:#666;font-size:13px">Se não foi você, é só ignorar este e-mail: sem a confirmação, você não entra na lista.</p>
+    </div>
+  `;
+  const res = await fetch(RESEND_API, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${resendApiKey()}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ from: FROM_ADDRESS, to, subject: "Confirme para saber quando o Almara+ chegar no iPhone", html }),
+  });
+  if (!res.ok) throw new Error(`Resend email send failed: ${res.status} ${await res.text()}`);
+}
