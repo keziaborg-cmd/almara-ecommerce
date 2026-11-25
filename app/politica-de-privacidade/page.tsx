@@ -46,6 +46,7 @@ const SECTIONS: LegalSection[] = [
       { t: "li", text: "informações relacionadas ao pedido" },
       { t: "li", text: "informações fornecidas voluntariamente durante o atendimento; e" },
       { t: "li", text: "preferências relacionadas às comunicações da Almara." },
+      { t: "p", text: "Na página almara.com.br/lu, o e-mail deixado na lista de espera é usado só para avisar quando o Almara+ chegar na App Store." },
       { t: "h3", text: "3.3. Dados relacionados às compras" },
       { t: "p", text: "Produtos adquiridos, quantidade, valor, data e horário do pedido, status e forma de pagamento, status e informações de entrega, histórico de pedidos e solicitações de troca, devolução ou atendimento." },
       { t: "h3", text: "3.4. Dados de pagamento" },

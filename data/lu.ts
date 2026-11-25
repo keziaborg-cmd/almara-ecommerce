@@ -81,8 +81,9 @@ export const LU_DEFAULT_SOURCE = "ig-lu";
 export const LU_WAITLIST_SOURCE = "lista-espera-ios-lu";
 export const LU_WAITLIST_TEXT_VERSION = "lista-ios-lu-v1";
 
-/** QR Code do Google Play com a origem da /lu (computador). null = espaço reservado até gerar. */
-export const LU_QR_GOOGLE_PLAY: string | null = null;
+/** QR Code do Google Play (computador), com a origem utm_source=ig-lu&utm_medium=qr no referrer.
+ * Gerado com o pacote qrcode; se o link mudar, gerar de novo. */
+export const LU_QR_GOOGLE_PLAY: string | null = "/lu/qr-google-play.svg";
 
 /** Imagem da Lu no diorama (1080×1350). null = placeholder até a imagem da série chegar. */
 export const LU_IMAGE: string | null = "/lu/pagina-lu.png";
