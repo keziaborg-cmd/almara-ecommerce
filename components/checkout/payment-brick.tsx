@@ -30,8 +30,6 @@ interface PaymentBrickProps {
   onApproved: () => void;
   onPixPending: (pix: PixPending) => void;
   onError: (message: string) => void;
-  /** Pedido com kit da Black Friday não aceita boleto (pago dias depois; a reserva da unidade é curta). */
-  allowBoleto?: boolean;
 }
 
 export function PaymentBrick({
@@ -43,7 +41,6 @@ export function PaymentBrick({
   onApproved,
   onPixPending,
   onError,
-  allowBoleto = true,
 }: PaymentBrickProps) {
   if (!publicKey) {
     return (
@@ -64,7 +61,7 @@ export function PaymentBrick({
         paymentMethods: {
           creditCard: "all",
           debitCard: "all",
-          ...(allowBoleto ? { ticket: "all" as const } : {}),
+          ticket: "all",
           bankTransfer: "all",
         },
       }}
